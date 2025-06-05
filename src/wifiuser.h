@@ -12,31 +12,32 @@
 class WifiUser {
 public:
 	WifiUser(const char *ap_ssid, int timeout);
-	void handleConfigWifi();
-	void checkConnect(bool reConnect);
-	void checkDNS_HTTP();
-	void removeWifi();
-	void connectWiFi(int timeout_s = 0);
-	void wifiConfig();
+	void handleConfigWifi();          // 处理 WiFi 配置
+	void checkConnect(bool reConnect); // 检查 WiFi 连接状态
+	void checkDNS_HTTP();             // 处理 DNS 和 HTTP 请求
+	void removeWifi();                // 清除 WiFi 配置信息
+	void connectWiFi(int timeout_s = 0); // 尝试连接 WiFi
+	void wifiConfig();                // 进入 WiFi 配置模式
+	bool isConnected();               // 检查是否已连接到 WiFi
+
 private:
-	IPAddress apIP;
-	String wifi_ssid;
-	String wifi_pass;
-	String scanNetworksID;
-	const byte DNS_PORT = 53;
-	const int webPort = 80;
-	DNSServer dnsserver;
-	WebServer server;
-	String ap_ssid; // 存储热点的 SSID
-	int timeout;    // 存储超时时间
-	void HandleRoot();
-	void initSoftAp();
-	void handleNotFound();
-	void initDNS();
-	void initWebserver();
-	bool scanWiFi();
+	IPAddress apIP;                   // AP 模式的 IP 地址
+	String wifi_ssid;                 // WiFi SSID
+	String wifi_pass;                 // WiFi 密码
+	String scanNetworksID;            // 扫描到的 WiFi 网络信息
+	const byte DNS_PORT = 53;         // DNS 服务器端口
+	const int webPort = 80;           // Web 服务器端口
+	DNSServer dnsserver;              // DNS 服务器实例
+	WebServer server;                 // Web 服务器实例
+	String ap_ssid;                   // 热点的 SSID
+	int timeout;                      // WiFi 连接超时时间
 
-
+	void HandleRoot();                // 处理 Web 服务器根路径请求
+	void initSoftAp();                // 初始化 AP 模式
+	void handleNotFound();            // 处理 404 请求
+	void initDNS();                   // 初始化 DNS 服务器
+	void initWebserver();             // 初始化 Web 服务器
+	bool scanWiFi();                  // 扫描 WiFi 网络
 };
 
 #endif

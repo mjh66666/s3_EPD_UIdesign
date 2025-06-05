@@ -247,7 +247,6 @@ void WifiUser::removeWifi()
 void WifiUser::checkConnect(bool reConnect)
 {
 	if (WiFi.status() != WL_CONNECTED) {
-		Serial.println("WiFi is not connected, attempting to reconnect...");
 		if (reConnect == true && WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
 			Serial.println("WIFI未连接.");
 			Serial.println("WiFi Mode:");
@@ -260,8 +259,15 @@ void WifiUser::checkConnect(bool reConnect)
 		}
 	}
 }
-void  WifiUser::checkDNS_HTTP()
+void WifiUser::checkDNS_HTTP()
 {
-	dnsserver.processNextRequest();   //检查客户端DNS请求
-	server.handleClient();            //检查客户端(浏览器)http请求
+	if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+		dnsserver.processNextRequest();   // 检查客户端 DNS 请求
+		server.handleClient();            // 检查客户端 HTTP 请求
+	}
+}
+
+bool WifiUser::isConnected()
+{
+	return WiFi.status() == WL_CONNECTED;
 }

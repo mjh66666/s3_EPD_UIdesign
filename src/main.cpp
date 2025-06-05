@@ -139,7 +139,7 @@
 
 
 
-WifiUser wifiUser("ESP32-Config", 30); // 创建 WifiUser 对象，传入热点 SSID 和超时时间
+WifiUser wifiUser("ESP32-Config", 10); // 创建 WifiUser 对象，传入热点 SSID 和超时时间
 
 void checkGpioTask(void *parameter)
 {
@@ -159,9 +159,9 @@ void setup()
 {
 	Serial.begin(115200); // 初始化串口
 	if (!SPIFFS.begin(true)) {
-        Serial.println("Failed to mount SPIFFS");
-        return;
-    }
+		Serial.println("Failed to mount SPIFFS");
+		return;
+	}
 	xTaskCreate(
 	    checkGpioTask,    // 任务函数
 	    "Check GPIO0",    // 任务名称
@@ -172,7 +172,7 @@ void setup()
 	);
 	Serial.println("Starting WiFi User Test...");
 	// 初始化 WiFi 配置模式
-	wifiUser.wifiConfig();
+	//wifiUser.wifiConfig();
 
 	// 尝试连接 WiFi
 	wifiUser.connectWiFi();
