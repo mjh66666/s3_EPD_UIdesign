@@ -32,12 +32,19 @@ WifiUser::WifiUser(const char *ap_ssid, int timeout)
  */
 void WifiUser::HandleRoot()
 {
-	if (server.hasArg("selectSSID")) {
-		server.send(200, "text/html", ROOT_HTML + scanNetworksID + "</body></html>");
+	File file = SPIFFS.open("/index.html", "r");
+	if (!file) {
+		server.send(500, "text/plain", "Failed to open index.html");
+		return;
 	}
-	else {
-		server.send(200, "text/html", ROOT_HTML + scanNetworksID + "</body></html>");
-	}
+
+	String html = file.readString(); // 读取文件内容
+	file.close();
+
+	// 替换占位符 ${scanNetworksID} 为实际的 WiFi 列表
+	html.replace("${scanNetworksID}", scanNetworksID);
+
+	server.send(200, "text/html", html);
 }
 
 void WifiUser::handleConfigWifi()
@@ -152,30 +159,22 @@ void WifiUser::initWebserver()
 bool WifiUser::scanWiFi()
 {
 	Serial.println("scan start");
-	Serial.println("--------->");
 	int n = WiFi.scanNetworks();
 	Serial.println("scan done");
 	if (n == 0) {
-		Serial.println("no networks found");
-		scanNetworksID = "not network found";
+		scanNetworksID = "<p>未找到可用的 WiFi 网络</p>";
 		return false;
 	}
 	else {
 		scanNetworksID = "";
 		for (int i = 0; i < n; i++) {
-			Serial.print(i + 1);
-			Serial.print(": ");
-			Serial.print(WiFi.SSID(i));
-			Serial.print(" (");
-			Serial.print(WiFi.RSSI(i));
-			Serial.print(")");
-			Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
-			scanNetworksID += "<p>" + String(WiFi.SSID(i)) + " (" + String(WiFi.RSSI(i)) + ")</p>";
-			delay(10);
+			scanNetworksID += "<div class='wifi-item'>";
+			scanNetworksID += "<span class='wifi-name'>" + WiFi.SSID(i) + "</span>";
+			scanNetworksID += "<span class='wifi-signal'>信号强度: " + String(WiFi.RSSI(i)) + "dBm</span>";
+			scanNetworksID += "</div>";
 		}
 		return true;
 	}
-	return false;
 }
 
 void WifiUser::connectWiFi(int timeout_s)

@@ -141,37 +141,42 @@
 
 WifiUser wifiUser("ESP32-Config", 30); // 创建 WifiUser 对象，传入热点 SSID 和超时时间
 
-void checkGpioTask(void *parameter) {
-    pinMode(GPIO0_PIN_WIFIRESET, INPUT_PULLUP); // 配置 GPIO0 为输入模式，启用内部上拉电阻
+void checkGpioTask(void *parameter)
+{
+	pinMode(GPIO0_PIN_WIFIRESET, INPUT_PULLUP); // 配置 GPIO0 为输入模式，启用内部上拉电阻
 
-    while (true) {
-        if (digitalRead(GPIO0_PIN_WIFIRESET == LOW)) { // 检测 GPIO0 是否被按下（低电平）
-            Serial.println("GPIO0 按下，清除网络信息...");
-            wifiUser.removeWifi(); // 调用清除网络信息的函数
-            delay(1000); // 防止重复触发
-        }
-        vTaskDelay(pdMS_TO_TICKS(100)); // 每 100 毫秒检测一次
-    }
+	while (true) {
+		if (digitalRead(GPIO0_PIN_WIFIRESET) == LOW) { // 检测 GPIO0 是否被按下（低电平）
+			Serial.println("GPIO0 按下，清除网络信息...");
+			wifiUser.removeWifi(); // 调用清除网络信息的函数
+			delay(1000); // 防止重复触发
+		}
+		vTaskDelay(pdMS_TO_TICKS(10)); // 每 10 毫秒检测一次
+	}
 }
 
 void setup()
 {
-	esp_wifi_restore();
 	Serial.begin(115200); // 初始化串口
+	if (!SPIFFS.begin(true)) {
+        Serial.println("Failed to mount SPIFFS");
+        return;
+    }
+	xTaskCreate(
+	    checkGpioTask,    // 任务函数
+	    "Check GPIO0",    // 任务名称
+	    2048,             // 任务堆栈大小（字节）
+	    NULL,             // 任务参数
+	    1,                // 任务优先级
+	    NULL              // 任务句柄
+	);
 	Serial.println("Starting WiFi User Test...");
 	// 初始化 WiFi 配置模式
 	wifiUser.wifiConfig();
 
 	// 尝试连接 WiFi
 	wifiUser.connectWiFi();
-	xTaskCreate(
-        checkGpioTask,    // 任务函数
-        "Check GPIO0",    // 任务名称
-        2048,             // 任务堆栈大小（字节）
-        NULL,             // 任务参数
-        1,                // 任务优先级
-        NULL              // 任务句柄
-    );
+
 }
 
 void loop()
