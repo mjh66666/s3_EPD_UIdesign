@@ -11,11 +11,9 @@
 WifiUser::WifiUser(const char *ap_ssid, int timeout)
 	: server(webPort), apIP(192, 168, 4, 1)
 {
-
 	this->ap_ssid = ap_ssid; // 将传入的参数赋值给成员变量
 	this->timeout = timeout; // 同样处理 timeout
 }
-
 
 /**
  * @brief 处理客户端对根路径 ("/") 的 HTTP 请求。
@@ -47,101 +45,109 @@ void WifiUser::HandleRoot()
 	server.send(200, "text/html", html);
 }
 
+/**
+ * @brief 处理 WiFi 配置请求
+ *
+ * 此函数接收客户端提交的 WiFi SSID 和密码，并尝试连接到指定的 WiFi 网络。
+ */
 void WifiUser::handleConfigWifi()
 {
-	//检查是否收到了wifi的账号密码
+	// 检查是否收到了 WiFi 的账号密码
 	if (server.hasArg("ssid") && server.hasArg("pass")) {
-		Serial.print("got ssid:");
+		LOG("Received SSID:");
 		wifi_ssid = server.arg("ssid");
-		Serial.println(wifi_ssid);
+		LOG(wifi_ssid);
 
-		Serial.print("got password:");
+		LOG("Received password:");
 		wifi_pass = server.arg("pass");
-		Serial.println(wifi_pass);
+		LOG(wifi_pass);
 	}
 	else {
-		Serial.println("error, not found ssid or password");
-		server.send(200, "text/html", "<meta charset='UTF-8'>error, not found ssid or password");
-		return;  // Removed the '0' since this is a void function
+		LOG("Error: SSID or password not found");
+		server.send(200, "text/html", "<meta charset='UTF-8'>Error: SSID or password not found");
+		return;
 	}
 
-	server.send(200, "text/html", "<meta charset='UTF-8'>SSID:" + wifi_ssid + "<br />password:" + wifi_pass + "<br />已取得WiFi信息,正在尝试连接,请手动关闭此页面。");
+	server.send(200, "text/html", "<meta charset='UTF-8'>SSID:" + wifi_ssid + "<br />Password:" + wifi_pass + "<br />WiFi credentials received. Please close this page manually.");
 	delay(2000);
 
-	WiFi.softAPdisconnect(true);//关闭wifi
-	server.close();//关闭web服务
+	server.close();              // 关闭 Web 服务
 
 	WiFi.softAPdisconnect();
-	Serial.println("WiFi Connect SSID:" + wifi_ssid + "  PASS:" + wifi_pass);
+	LOG("WiFi Connect SSID: " + wifi_ssid + "  PASS: " + wifi_pass);
 	if (WiFi.status() != WL_CONNECTED) {
-		Serial.println("开始调用连接方法");
+		LOG("Starting connection method");
 		connectWiFi(timeout);
 	}
 	else {
-		Serial.println("WiFi已连接");
+		LOG("WiFi is already connected");
 	}
 }
 
+/**
+ * @brief 处理未找到的 HTTP 请求
+ *
+ * 返回 404 页面。
+ */
 void WifiUser::handleNotFound()
 {
 	WifiUser::HandleRoot();
 	server.send(404, "text/html", "<h1>404 Not Found</h1><p>The requested resource was not found on this server.</p>");
 }
 
+/**
+ * @brief 初始化 AP 模式
+ *
+ * 设置设备为 AP 模式，并配置 IP 地址。
+ */
 void WifiUser::initSoftAp()
 {
 	WiFi.mode(WIFI_AP);
 	if (!WiFi.softAPConfig(this->apIP, this->apIP, IPAddress(255, 255, 255, 0))) {
-		Serial.println("AP Config Failed");
+		LOG("AP Config Failed");
 	}
 
 	if (WiFi.softAP(this->ap_ssid)) {
-		Serial.println("AP Started");
-		Serial.print("Soft-AP IP address = ");
-		Serial.println(WiFi.softAPIP());                                                //接入点ip
-		Serial.println(String("MAC address = ")  + WiFi.softAPmacAddress().c_str());    //接入点mac
+		LOG("AP Started");
+		LOGF("Soft-AP IP address = %s", WiFi.softAPIP().toString().c_str());
+		LOGF("MAC address = %s", WiFi.softAPmacAddress().c_str());
 	}
 	else {
-		Serial.println("AP Start Failed");
+		LOG("AP Start Failed");
 		delay(1000);
-		Serial.println("restart now...");
+		LOG("Restarting now...");
 		ESP.restart();
 	}
 }
 
-
-
+/**
+ * @brief 初始化 DNS 服务器
+ *
+ * 启动 DNS 服务器，用于处理客户端的 DNS 请求。
+ */
 void WifiUser::initDNS()
 {
 	if (dnsserver.start(this->DNS_PORT, "*", this->apIP)) {
-		Serial.println("start dnsserver success.");
+		LOG("DNS server started successfully.");
 	}
 	else {
-		Serial.println("start dnsserver failed.");
+		LOG("Failed to start DNS server.");
 	}
 }
 
 /**
- * @brief 初始化 Web 服务器并设置路由。
+ * @brief 初始化 Web 服务器并设置路由
  *
- * 此函数负责启动 MDNS 服务，并为 Web 服务器设置路由规则。
- * - "/" 路由：处理 HTTP GET 请求，返回 WiFi 配置页面。
- * - "/configwifi" 路由：处理 HTTP POST 请求，接收 WiFi 配置信息。
- *
- * @details
- * - 使用 MDNS 服务为设备提供易记的域名（如 "esp32-wifi-config.local"）。
- * - 使用 std::bind 将类的成员函数绑定到 Web 服务器的路由中。
- *
- * @return void
+ * 启动 MDNS 服务，并为 Web 服务器设置路由规则。
  */
 void WifiUser::initWebserver()
 {
 	// 启动 MDNS 服务，设置设备的域名为 "esp32-wifi-config.local"
 	if (MDNS.begin("esp32-wifi-config")) {
-		Serial.println("MDNS responder started");
+		LOG("MDNS responder started");
 	}
 	else {
-		Serial.println("Error setting up MDNS responder!");
+		LOG("Error setting up MDNS responder!");
 	}
 
 	// 设置 "/" 路由，处理 HTTP GET 请求，返回 WiFi 配置页面
@@ -153,16 +159,23 @@ void WifiUser::initWebserver()
 	server.onNotFound(std::bind(&WifiUser::handleNotFound, this));
 
 	server.begin(); // 启动 Web 服务器
-	Serial.println("Web server started");
+	LOG("Web server started");
 }
 
+/**
+ * @brief 扫描 WiFi 网络
+ *
+ * 扫描周围的 WiFi 网络，并生成 HTML 格式的 WiFi 列表。
+ *
+ * @return 是否成功扫描到 WiFi 网络
+ */
 bool WifiUser::scanWiFi()
 {
-	Serial.println("scan start");
+	LOG("Scan started");
 	int n = WiFi.scanNetworks();
-	Serial.println("scan done");
+	LOG("Scan completed");
 	if (n == 0) {
-		scanNetworksID = "<p>未找到可用的 WiFi 网络</p>";
+		scanNetworksID = "<p>No available WiFi networks found</p>";
 		return false;
 	}
 	else {
@@ -170,59 +183,70 @@ bool WifiUser::scanWiFi()
 		for (int i = 0; i < n; i++) {
 			scanNetworksID += "<div class='wifi-item'>";
 			scanNetworksID += "<span class='wifi-name'>" + WiFi.SSID(i) + "</span>";
-			scanNetworksID += "<span class='wifi-signal'>信号强度: " + String(WiFi.RSSI(i)) + "dBm</span>";
+			scanNetworksID += "<span class='wifi-signal'>Signal strength: " + String(WiFi.RSSI(i)) + "dBm</span>";
 			scanNetworksID += "</div>";
 		}
 		return true;
 	}
 }
 
+/**
+ * @brief 尝试连接 WiFi
+ *
+ * 根据提供的 SSID 和密码，尝试连接到 WiFi 网络。
+ *
+ * @param timeout_s 超时时间（秒）
+ */
 void WifiUser::connectWiFi(int timeout_s)
 {
 	if (timeout_s == 0) {
-		timeout_s = this->timeout; // 如果未传入参数，使用成员变量 timeout
+		timeout_s = this->timeout;
 	}
-	Serial.println("Connecting to WiFi...");
+	LOG("Connecting to WiFi...");
 	WiFi.mode(WIFI_STA);
 	WiFi.setAutoConnect(true);
 	WiFi.setAutoReconnect(true);
+
 	if (wifi_ssid != "" && wifi_pass != "") {
 		WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
 	}
 	else {
-		Serial.println("use nvs data connect wifi");
+		LOG("Using NVS data to connect WiFi");
 		WiFi.begin();
 	}
-	int ConnectedTime = 0;
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(1000);
-		ConnectedTime++;
-		Serial.print(".");
 
-		if (ConnectedTime >= timeout_s) {
-			Serial.println("");
-			Serial.println("连接超时,请检查WiFi账号密码是否正确");
-			WiFi.disconnect(); // 确保断开之前的连接
-			wifiConfig();      // 重新进入配置模式
+	unsigned long startTime = millis();
+	while (WiFi.status() != WL_CONNECTED) {
+		if (millis() - startTime > timeout_s * 1000) {
+			LOG("Connection timed out. Please check if the WiFi SSID and password are correct.");
+			WiFi.disconnect();
+			wifiConfig(); // 进入 WiFi 配置模式
 			return;
 		}
+		delay(100); // 短暂延时，避免占用过多 CPU 时间
 	}
-	if (WiFi.status() == WL_CONNECTED) {        //如果连接成功
-		Serial.println("WIFI connect Success");
-		Serial.printf("SSID:%s", WiFi.SSID().c_str());
-		Serial.printf(", PSW:%s\r\n", WiFi.psk().c_str());
-		Serial.print("LocalIP:");
-		Serial.print(WiFi.localIP());
-		Serial.print(" ,GateIP:");
-		Serial.println(WiFi.gatewayIP());
-		Serial.print("WIFI status is:");
-		Serial.print(WiFi.status());
-		server.stop();                            //停止开发板所建立的网络服务器。
-	}
+
+	LOG("WiFi connected successfully");
+	LOGF("SSID: %s", WiFi.SSID().c_str());
+	LOGF("Password: %s", WiFi.psk().c_str());
+	LOGF("Local IP: %s, Gateway IP: %s", WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str());
+	LOGF("WiFi status: %d", WiFi.status());
+	server.stop();
 }
 
+/**
+ * @brief 进入 WiFi 配置模式
+ *
+ * 初始化 AP 模式、DNS 服务器和 Web 服务器。
+ */
 void WifiUser::wifiConfig()
 {
+	// 停止可能正在运行的服务
+	dnsserver.stop();
+	server.close();
+	server.stop();
+
+
 	// 初始化软AP
 	initSoftAp();
 
@@ -236,29 +260,60 @@ void WifiUser::wifiConfig()
 	scanWiFi();
 }
 
+/**
+ * @brief 清除 WiFi 配置信息
+ *
+ * 恢复 WiFi 出厂设置，并重启设备。
+ */
 void WifiUser::removeWifi()
 {
 	esp_wifi_restore();
-	Serial.println("连接信息已清空,准备重启设备..");
+	LOG("WiFi credentials cleared. Restarting device...");
 	delay(1000);
 	ESP.restart(); // 重启设备
 }
 
+/**
+ * @brief 检查 WiFi 连接状态
+ *
+ * 如果未连接且允许重新连接，则尝试重新连接。
+ *
+ * @param reConnect 是否允许重新连接
+ */
 void WifiUser::checkConnect(bool reConnect)
 {
-	if (WiFi.status() != WL_CONNECTED) {
-		if (reConnect == true && WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-			Serial.println("WIFI未连接.");
-			Serial.println("WiFi Mode:");
-			Serial.println(WiFi.getMode());
-			Serial.println("正在连接WiFi...");
-			connectWiFi(timeout);          //连接wifi函数
+	static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
+	static unsigned long lastReconnectAttempt = 0; // 上次重新连接的时间
+
+	wl_status_t currentStatus = WiFi.status();
+	if (currentStatus != lastStatus) {
+		if (currentStatus == WL_CONNECTED) {
+			LOG("WiFi connected successfully.");
+			LOGF("SSID: %s", WiFi.SSID().c_str());
+			LOGF("Local IP: %s", WiFi.localIP().toString().c_str());
 		}
 		else {
-			Serial.println("WiFi is already connected.");
+			LOG("WiFi is not connected.");
+			if (reConnect && millis() - lastReconnectAttempt > 30000) { // 每 30 秒尝试一次
+				lastReconnectAttempt = millis();
+				if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+					LOG("Starting AP mode for WiFi configuration...");
+					wifiConfig(); // 进入 WiFi 配置模式
+				}
+				else {
+					LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
+				}
+			}
 		}
+		lastStatus = currentStatus; // 更新状态
 	}
 }
+
+/**
+ * @brief 处理 DNS 和 HTTP 请求
+ *
+ * 在 AP 模式下处理客户端的 DNS 和 HTTP 请求。
+ */
 void WifiUser::checkDNS_HTTP()
 {
 	if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
@@ -267,6 +322,11 @@ void WifiUser::checkDNS_HTTP()
 	}
 }
 
+/**
+ * @brief 检查是否已连接到 WiFi
+ *
+ * @return 是否已连接到 WiFi
+ */
 bool WifiUser::isConnected()
 {
 	return WiFi.status() == WL_CONNECTED;
