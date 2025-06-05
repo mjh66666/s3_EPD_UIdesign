@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../../s3_eink_version1"
+		},
+		{
+			"name": "wifitest",
+			"path": "../../wifitest"
+		},
+		{
+			"name": "s3_EPD_UIdesign",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"wifi.h": "c"
+		}
+	}
+}
