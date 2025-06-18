@@ -46,7 +46,7 @@
 		// 根据显示缓冲区大小调整最大高度
 	#endif
 	// GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=*/15, /*DC=*/16, /*RST=*/17, /*BUSY=*/3));
-	GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=*/7, /*DC=*/6, /*RST=*/5, /*BUSY=*/4));
+	GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=*/15, /*DC=*/16, /*RST=*/17, /*BUSY=*/3));
 	// 初始化显示类，指定特定引脚
 #endif
 
@@ -86,7 +86,7 @@ void epd_Init()
 	// GXEPD2初始化
 #if defined(ESP32) && defined(USE_HSPI_FOR_EPD)
 	//hspi.begin(13, 12, 14, 15); // 引脚修改
-	hspi.begin(15, -1, 16, 7); // 引脚修改
+	hspi.begin(13, 12, 14, 15); // 引脚修改
 	display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
 #endif
 	display.setRotation(1); // 即为横向
