@@ -103,7 +103,7 @@ bool Weather::GetHourlyWeather()
 	Serial.println("get Hourlyweather now");
 	bool result = HttpsGetUtils::getString(url_hourly.c_str(), outbuf, len);
 	if (outbuf && len) {
-		StaticJsonDocument<8192> doc;
+		StaticJsonDocument<5120> doc;
 		DeserializationError err = deserializeJson(doc, (char *)outbuf, len);
 		if (!err) {
 			JsonArray hourly = doc["hourly"].as<JsonArray>();

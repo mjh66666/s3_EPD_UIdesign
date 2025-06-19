@@ -1,7 +1,13 @@
+/*** 
+ * @Author: mojionghao
+ * @Date: 2025-05-15 21:39:52
+ * @LastEditors: mojionghao
+ * @LastEditTime: 2025-06-19 19:11:16
+ * @FilePath: \s3_EPD_UIdesign\src\time\get_time.cpp
+ * @Description: 
+ */
 #include "get_time.h"
-#include <WiFi.h>
-#include <time.h>
-#include <string.h>
+
 
 const char *ntpServer = "ntp.aliyun.com";
 const long  gmtOffset_sec = 8 * 3600; // 东八区

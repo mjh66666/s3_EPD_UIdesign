@@ -1,6 +1,8 @@
 #pragma once
 #include <stddef.h>
-
+#include <WiFi.h>
+#include <time.h>
+#include <string.h>
 // NTP初始化
 void initNTP();
 

@@ -23,6 +23,7 @@
 */
 
 // u8g2Fonts引擎和GxEPD2原生绘图之间的冲突问题，目前只能先写完文字刷新后再重新画图然后再刷新。存在二次刷新问题。
+
 #define USE_HSPI_FOR_EPD // 定义使用HSPI接口用于电子墨水屏
 
 #define ENABLE_GxEPD2_GFX 0 // 禁用GxEPD2的GFX功能
@@ -122,74 +123,74 @@ void epd_layout_hello()
 	while (display.nextPage());
 }
 
-
+//废弃写法
 
 void epd_layout_TIME(int hour, int minute)
 {
-	char str[6];
-	snprintf(str, sizeof(str), "%02d:%02d", hour, minute);
+  char str[6];
+  snprintf(str, sizeof(str), "%02d:%02d", hour, minute);
 
-	u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
-	int16_t str_w = u8g2_epd.getUTF8Width(str);
-	int16_t ascent = u8g2_epd.getFontAscent();
-	int16_t descent = u8g2_epd.getFontDescent();
-	int16_t font_h = ascent - descent;
-	int16_t x = 0 + (175 - str_w) / 2;
-	int16_t y = 27 + (55 - font_h) / 2 + ascent;
-	u8g2_epd.drawUTF8(x, y, str);
+  u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
+  int16_t str_w = u8g2_epd.getUTF8Width(str);
+  int16_t ascent = u8g2_epd.getFontAscent();
+  int16_t descent = u8g2_epd.getFontDescent();
+  int16_t font_h = ascent - descent;
+  int16_t x = 0 + (175 - str_w) / 2;
+  int16_t y = 27 + (55 - font_h) / 2 + ascent;
+  u8g2_epd.drawUTF8(x, y, str);
 }
 
-void epd_layout_static()
-{
-	//todo logo
-	display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
+// // void epd_layout_static()
+// // {
+// //   todo logo
+// //   display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
 
-	//分隔线
-	display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H, AREA_TOPBAR_X + AREA_TOPBAR_W - 1, AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
-	display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
-}
+// //   分隔线
+// //   display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H, AREA_TOPBAR_X + AREA_TOPBAR_W - 1, AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
+// //   display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
+// // }
 
-//写入日期
-void epd_layout_date(char *date)
-{
-	text14(date, AREA_DATA_X + 30, AREA_DATA_Y);
-}
+// // 写入日期
+// // void epd_layout_date(char *date)
+// // {
+// //   text14(date, AREA_DATA_X + 30, AREA_DATA_Y);
+// // }
 
-//写入温湿度
-void epd_layout_humi_temp(float humi, float temp)
-{
-	char humi_str[20];
-	char temp_str[20];
-	snprintf(humi_str, sizeof(humi_str), "温度:%.1fC", humi);
-	snprintf(temp_str, sizeof(temp_str), "温度:%.1fC", temp);
-	text14(temp_str, AREA_DATA_X, AREA_DATA_Y + 14);
-	text14(humi_str, AREA_DATA_X, AREA_DATA_Y + 14 + 14);
-}
+// // 写入温湿度
+// // void epd_layout_humi_temp(float humi, float temp)
+// // {
+// //   char humi_str[20];
+// //   char temp_str[20];
+// //   snprintf(humi_str, sizeof(humi_str), "温度:%.1fC", humi);
+// //   snprintf(temp_str, sizeof(temp_str), "温度:%.1fC", temp);
+// //   text14(temp_str, AREA_DATA_X, AREA_DATA_Y + 14);
+// //   text14(humi_str, AREA_DATA_X, AREA_DATA_Y + 14 + 14);
+// // }
 
 
 
-void epd_full_reflash()
-{
-	display.firstPage();
-	do {
-		text14("微信消息：卧槽[动画表情]", 0, 0);
-		epd_layout_static();
-	}
-	while (display.nextPage());
-	display.firstPage();
-}
+// // void epd_full_reflash()
+// // {
+// //   display.firstPage();
+// //   do {
+// //       text14("微信消息：卧槽[动画表情]", 0, 0);
+// //       epd_layout_static();
+// //   }
+// //   while (display.nextPage());
+// //   display.firstPage();
+// // }
 
-void epd_refresh_time(int hour, int minute, char *date)
-{
-	// 设置局部刷新窗口为时间区域
-	display.setPartialWindow(AREA_TIME_X, AREA_TIME_Y, AREA_TIME_W, AREA_TIME_H + 12);
-	display.firstPage();
-	do {
-		// 清除时间区域背景
-		display.fillRect(AREA_TIME_X, AREA_TIME_Y, AREA_TIME_W, AREA_TIME_H + 12, GxEPD_WHITE);
-		// 居中显示时间
-		epd_layout_TIME(hour, minute);
-		text14(date, AREA_DATA_X + 30, AREA_DATA_Y);
-	}
-	while (display.nextPage());
-}
+// // void epd_refresh_time(int hour, int minute, char *date)
+// // {
+// //   设置局部刷新窗口为时间区域
+// //   display.setPartialWindow(AREA_TIME_X, AREA_TIME_Y, AREA_TIME_W, AREA_TIME_H + 12);
+// //   display.firstPage();
+// //   do {
+// //       清除时间区域背景
+// //       display.fillRect(AREA_TIME_X, AREA_TIME_Y, AREA_TIME_W, AREA_TIME_H + 12, GxEPD_WHITE);
+// //       居中显示时间
+// //       epd_layout_TIME(hour, minute);
+// //       text14(date, AREA_DATA_X + 30, AREA_DATA_Y);
+// //   }
+// //   while (display.nextPage());
+// // }
