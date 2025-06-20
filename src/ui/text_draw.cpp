@@ -4,7 +4,7 @@
  * @LastEditors: mojionghao
  * @LastEditTime: 2025-05-14 17:29:36
  * @FilePath: \s3_EPD_UIdesign\src\text_draw.c
- * @Description:
+ * @Description
  */
 #include "text_draw.h"
 #include <GxEPD2_BW.h>
@@ -28,6 +28,13 @@ void text14(const char *str, int16_t x, int16_t y, uint16_t fg_color, uint16_t b
 	int8_t baseline = 14;
 	u8g2_epd.setFontMode(1);
 	u8g2_epd.setFont(u8g2_font_wqy14_t_gb2312);
+
+	int16_t w = u8g2_epd.getUTF8Width(str);
+	int16_t h = baseline;
+
+	if (bg_color == GxEPD_BLACK) {
+		display.fillRect(x, y, w, h, bg_color); // 填充背景色
+	}
 	u8g2_epd.setBackgroundColor(bg_color);
 	u8g2_epd.setForegroundColor(fg_color);
 	if (!r2l) {

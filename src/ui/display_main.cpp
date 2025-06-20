@@ -59,11 +59,7 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 		display.setFullWindow(); // 设置全局刷新窗口
 		partial_count = 0; // 重置局部刷新计数
 		//如果上一个界面不是当前界面则重新绘制
-		//TODOT图标绘制
-		display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
-		// 绘制顶部栏
-		display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H, AREA_TOPBAR_X + AREA_TOPBAR_W - 1, AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
-		display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
+
 	}
 	else {
 		display.setPartialWindow(0, 0, display.width(), display.height()); // 设置局部刷新窗口
@@ -72,6 +68,13 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 	display.firstPage(); // 开始绘制第一页
 	do {
 
+		if (uis.refreshType == REFRESH_FULL) {
+			display.fillScreen(GxEPD_WHITE); // 清空屏幕，背景色为白色
+		}
+		display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
+		// 绘制顶部栏
+		display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H, AREA_TOPBAR_X + AREA_TOPBAR_W - 1, AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
+		display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
 		// 绘制时间
 		char str[6];
 		snprintf(str, sizeof(str), "%02d:%02d", display_main_data.new_timeinfo.tm_hour, display_main_data.new_timeinfo.tm_min);
@@ -116,7 +119,7 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 
 void display_main_todo(display_main_t display_main_data)
 {
-	display.setPartialWindow(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_W, AREA_TODO_H);
+	display.setPartialWindow(AREA_TODO_X + 5, AREA_TODO_Y + 32, AREA_TODO_W, AREA_TODO_H - 32);
 
 	display.firstPage();
 	do {
