@@ -46,7 +46,7 @@ extern GxEPD2_BW<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display;
 #define AREA_TODO_W       121  // 296-175
 #define AREA_TODO_H       112  // 128-16
 static uint8_t partial_count = 0; // 局部刷新标志
-void display_main(display_main_t display_main_data, UIStatus uis)
+void display_main(display_main_t *display_main_data, UIStatus *uis)
 {
 
 	u8g2_epd.setBackgroundColor(GxEPD_WHITE);              // 设置背景色为白色
@@ -55,7 +55,7 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 	u8g2_epd.setForegroundColor(GxEPD_BLACK);              // 设置前景色为黑色
 
 	//如果当前界面是全局刷新或局部刷新次数超过10次，则进行全局刷新
-	if (uis.refreshType == REFRESH_FULL || partial_count > 10) {
+	if (uis->refreshType == REFRESH_FULL || partial_count > 10) {
 		display.setFullWindow(); // 设置全局刷新窗口
 		partial_count = 0; // 重置局部刷新计数
 		//如果上一个界面不是当前界面则重新绘制
@@ -68,7 +68,7 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 	display.firstPage(); // 开始绘制第一页
 	do {
 
-		if (uis.refreshType == REFRESH_FULL) {
+		if (uis->refreshType == REFRESH_FULL) {
 			display.fillScreen(GxEPD_WHITE); // 清空屏幕，背景色为白色
 		}
 		display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
@@ -77,7 +77,7 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 		display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
 		// 绘制时间
 		char str[6];
-		snprintf(str, sizeof(str), "%02d:%02d", display_main_data.new_timeinfo.tm_hour, display_main_data.new_timeinfo.tm_min);
+		snprintf(str, sizeof(str), "%02d:%02d", display_main_data->new_timeinfo.tm_hour, display_main_data->new_timeinfo.tm_min);
 
 		u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
 		int16_t str_w = u8g2_epd.getUTF8Width(str);
@@ -90,26 +90,39 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 
 		//日期不一致时更新日期
 		char date_str[20];
-		strftime(date_str, 20, "%a,%d %b %Y", &display_main_data.new_timeinfo);
+		strftime(date_str, 20, "%a,%d %b %Y", &display_main_data->new_timeinfo);
 		text14(date_str, AREA_DATA_X + 30, AREA_DATA_Y);
 
 
 		// 绘制温湿度
 		char humi_str[20];
 		char temp_str[20];
-		snprintf(humi_str, sizeof(humi_str), "湿度:%.1f%%", display_main_data.humi);
-		snprintf(temp_str, sizeof(temp_str), "温度:%.1fC", display_main_data.temp);
+		snprintf(humi_str, sizeof(humi_str), "湿度:%.1f%%", display_main_data->humi);
+		snprintf(temp_str, sizeof(temp_str), "温度:%.1fC", display_main_data->temp);
 		text14(temp_str, AREA_DATA_X, AREA_DATA_Y + 14);
 		text14(humi_str, AREA_DATA_X, AREA_DATA_Y + 14 + 14);
 
+		Serial.printf("当前时间: %02d:%02d:%02d\n", display_main_data->new_timeinfo.tm_hour, display_main_data->new_timeinfo.tm_min, display_main_data->new_timeinfo.tm_sec);
+		if (display_main_data->new_timeinfo.tm_hour >= 6 && display_main_data->new_timeinfo.tm_hour < 18) {
+			text14(display_main_data->today.textDay.c_str(), 100, AREA_DATA_Y + 14);
+			Serial.printf("weather icon Day code: %d\n", display_main_data->today.iconDay);
+			show_weathericons(display_main_data->today.iconDay);
+		}
+		else {
+			text14(display_main_data->today.textNight.c_str(), 100, AREA_DATA_Y + 14);
+			Serial.printf("weather icon  Night code: %d\n", display_main_data->today.iconNight);
+			show_weathericons(display_main_data->today.iconNight);
+		}
+
+
 		// 绘制待办事项
 		for (int i = 0; i < TODO_MAX; i++) {
-			if (!display_main_data.todos[i].empty()) {
-				if (i == display_main_data.selected_todo) {
-					text14(display_main_data.todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14, GxEPD_WHITE, GxEPD_BLACK);// 选中待办事项时反色显示
+			if (!display_main_data->todos[i].empty()) {
+				if (i == display_main_data->selected_todo) {
+					text14(display_main_data->todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14, GxEPD_WHITE, GxEPD_BLACK);// 选中待办事项时反色显示
 				}
 				else {
-					text14(display_main_data.todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14);//    未选中待办事项正常显示
+					text14(display_main_data->todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14);//    未选中待办事项正常显示
 				}
 			}
 		}
@@ -117,23 +130,29 @@ void display_main(display_main_t display_main_data, UIStatus uis)
 	while (display.nextPage());   // 绘制下一页
 }
 
-void display_main_todo(display_main_t display_main_data)
+void display_main_todo(display_main_t *display_main_data)
 {
 	display.setPartialWindow(AREA_TODO_X + 5, AREA_TODO_Y + 32, AREA_TODO_W, AREA_TODO_H - 32);
 
 	display.firstPage();
 	do {
 		for (int i = 0; i < TODO_MAX; i++) {
-			if (!display_main_data.todos[i].empty()) {
-				if (i == display_main_data.selected_todo) {
-					text14(display_main_data.todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14, GxEPD_WHITE, GxEPD_BLACK);// 选中待办事项时反色显示
+			if (!display_main_data->todos[i].empty()) {
+				if (i == display_main_data->selected_todo) {
+					text14(display_main_data->todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14, GxEPD_WHITE, GxEPD_BLACK);// 选中待办事项时反色显示
 				}
 				else {
-					text14(display_main_data.todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14);//    未选中待办事项正常显示
+					text14(display_main_data->todos[i].c_str(), AREA_TODO_X + 5, AREA_TODO_Y + 32 + i * 14);//    未选中待办事项正常显示
 				}
 			}
 		}
 	}
 	while (display.nextPage());
 	partial_count++; // 增加局部刷新计数
+}
+
+
+void show_weathericons(int weather_code)
+{
+	display.drawInvertedBitmap(68, AREA_DATA_Y + 14, getWeatherIcon(weather_code), 32, 32, GxEPD_BLACK);
 }

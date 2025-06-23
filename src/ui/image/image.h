@@ -15,5 +15,5 @@ extern const unsigned char todo[];
 // 电池图标数组声明
 extern const unsigned char *batteryallArray[4];
 extern const int batteryallArray_LEN;
-
+extern const unsigned char *weather_icons_allArray[121];
 #endif

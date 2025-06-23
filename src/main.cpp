@@ -40,8 +40,8 @@
 #define GPIO0_PIN_WIFIRESET 0 // GPIO0引脚定义
 
 // 设置你的WiFi信息
-const char *ssid     = "lbd";
-const char *password = "lbd123456";
+const char *ssid     = "mate13";
+const char *password = "12345678";
 #define USER_KEY "0781c49e69024849b7cb76ef017ca453"
 const String  city = "从化" ;
 
@@ -61,9 +61,6 @@ void connectWiFi()
 
 void test_display_main()
 {
-	// 1. 初始化墨水屏
-	epd_Init();
-
 	// 2. 构造测试数据
 	display_main_t test_data;
 	UIStatus uis;
@@ -72,14 +69,31 @@ void test_display_main()
 	getLocalTime(&timeinfo);
 	test_data.new_timeinfo = timeinfo;
 
+	Weather weather(USER_KEY, urlEncode(city)); // 创建天气对象
+	struct weatherDailyInfo today;
+
+	if (weather.GetLocationCode()) {
+		Serial.println("城市 ID 获取成功！");
+		// 获取 3 天的天气信息
+		if (weather.Get3dWeather()) {
+			Serial.println("天气获取成功！");
+			Serial.printf("今天日期: %s\n", weather.getToday().fxDate.c_str());
+			Serial.printf("今天最高温: %d\n", weather.getToday().tempMax);
+			Serial.printf("今天最低温: %d\n", weather.getToday().tempMin);
+			Serial.printf("今天白天天气: %s\n", weather.getToday().textDay.c_str());
+			Serial.printf("晚上天气code: %d\n", weather.getToday().iconNight);
+			Serial.printf("白天天气code: %d\n", weather.getToday().iconDay);
+		}
+		else {
+			Serial.println("天气获取失败！");
+		}
+	}
+	else {
+		Serial.println("城市 ID 获取失败！");
+	}
+	test_data.today = weather.getToday();
 	test_data.humi = 55.5;
 	test_data.temp = 23.4;
-	test_data.weather = "多云";
-	test_data.city = "深圳";
-	test_data.textDay = "晴";
-	test_data.textNight = "多云";
-	test_data.tempMax = "28";
-	test_data.tempMin = "20";
 
 	// 设置待办事项
 	test_data.todos[0] = "写代码";
@@ -89,7 +103,7 @@ void test_display_main()
 
 	// 3. 测试主界面全刷
 	uis.refreshType = REFRESH_FULL;
-	display_main(test_data, uis);
+	display_main(&test_data, &uis);
 	delay(3000);
 
 	// 4. 测试主界面局刷
@@ -97,19 +111,19 @@ void test_display_main()
 	test_data.humi = 60.0;
 
 	uis.refreshType = REFRESH_PARTIAL;
-	display_main(test_data, uis);
+	display_main(&test_data, &uis);
 	delay(3000);
 
 	// 5. 测试待办事项区域局部刷新
 	test_data.selected_todo = 2;
 	test_data.todos[2] = "看书";
-	display_main_todo(test_data);
+	display_main_todo(&test_data);
 	delay(3000);
 
 	// 6. 测试删除待办事项
 	test_data.todos[1] = "";
 	test_data.selected_todo = 0;
-	display_main_todo(test_data);
+	display_main_todo(&test_data);
 	delay(3000);
 }
 void setup()
