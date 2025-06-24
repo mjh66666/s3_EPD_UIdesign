@@ -6,6 +6,7 @@
 #include <wifiuser.h>
 #include "get_time.h"
 #include "weather.h"
+#include "button.h"
 // 菜单索引枚举
 typedef enum {
 	MENU_HOME = 0, //主菜单：时间 今日天气 待办

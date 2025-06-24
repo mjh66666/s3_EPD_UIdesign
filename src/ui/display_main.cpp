@@ -1,3 +1,11 @@
+/*** 
+ * @Author: mojionghao
+ * @Date: 2025-06-18 21:12:40
+ * @LastEditors: mojionghao
+ * @LastEditTime: 2025-06-24 11:06:58
+ * @FilePath: \s3_EPD_UIdesign\src\ui\display_main.cpp
+ * @Description: 
+ */
 /***
  * @Author: mojionghao
  * @Date: 2025-06-18 21:12:40
@@ -99,18 +107,26 @@ void display_main(display_main_t *display_main_data, UIStatus *uis)
 		char temp_str[20];
 		snprintf(humi_str, sizeof(humi_str), "湿度:%.1f%%", display_main_data->humi);
 		snprintf(temp_str, sizeof(temp_str), "温度:%.1fC", display_main_data->temp);
-		text14(temp_str, AREA_DATA_X, AREA_DATA_Y + 14);
-		text14(humi_str, AREA_DATA_X, AREA_DATA_Y + 14 + 14);
+		text14(temp_str, AREA_DATA_X, AREA_DATA_Y + 20);
+		text14(humi_str, AREA_DATA_X, AREA_DATA_Y + 20 + 14 + 4);
 
-		Serial.printf("当前时间: %02d:%02d:%02d\n", display_main_data->new_timeinfo.tm_hour, display_main_data->new_timeinfo.tm_min, display_main_data->new_timeinfo.tm_sec);
+		char weather_str[50];
 		if (display_main_data->new_timeinfo.tm_hour >= 6 && display_main_data->new_timeinfo.tm_hour < 18) {
-			text14(display_main_data->today.textDay.c_str(), 100, AREA_DATA_Y + 14);
-			Serial.printf("weather icon Day code: %d\n", display_main_data->today.iconDay);
+			snprintf(weather_str, sizeof(weather_str), "%s %d-%d", display_main_data->today.textDay.c_str(), display_main_data->today.tempMin, display_main_data->today.tempMax);
+			text14(weather_str, 100, AREA_DATA_Y + 20);
+
+			snprintf(weather_str, sizeof(weather_str), "%s %s", display_main_data->today.windDirDay, display_main_data->today.winddScaleDay);
+			text14(weather_str, 100, AREA_DATA_Y + 20 + 14 + 4);
+
 			show_weathericons(display_main_data->today.iconDay);
 		}
 		else {
-			text14(display_main_data->today.textNight.c_str(), 100, AREA_DATA_Y + 14);
-			Serial.printf("weather icon  Night code: %d\n", display_main_data->today.iconNight);
+			snprintf(weather_str, sizeof(weather_str), "%s %d-%d", display_main_data->today.textNight.c_str(), display_main_data->today.tempMin, display_main_data->today.tempMax);
+			text14(weather_str, 100, AREA_DATA_Y + 20);
+
+			snprintf(weather_str, sizeof(weather_str), "%s %s", display_main_data->today.windDirNight, display_main_data->today.winddScaleNight);
+			text14(weather_str, 100, AREA_DATA_Y + 20 + 14 + 4);
+
 			show_weathericons(display_main_data->today.iconNight);
 		}
 
@@ -154,5 +170,5 @@ void display_main_todo(display_main_t *display_main_data)
 
 void show_weathericons(int weather_code)
 {
-	display.drawInvertedBitmap(68, AREA_DATA_Y + 14, getWeatherIcon(weather_code), 32, 32, GxEPD_BLACK);
+	display.drawInvertedBitmap(68, AREA_DATA_Y + 14 + 8, getWeatherIcon(weather_code), 32, 32, GxEPD_BLACK);
 }

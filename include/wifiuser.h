@@ -13,11 +13,11 @@
 #define WIFIUSER_DEBUG 1 // 设置为 1 启用日志，设置为 0 禁用日志
 
 #if WIFIUSER_DEBUG
-    #define LOG(x) Serial.println(x)
-    #define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+	#define LOG(x) Serial.println(x)
+	#define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
 #else
-    #define LOG(x)
-    #define LOGF(fmt, ...)
+	#define LOG(x)
+	#define LOGF(fmt, ...)
 #endif
 
 class WifiUser {
@@ -42,6 +42,7 @@ private:
 	WebServer server;                 // Web 服务器实例
 	String ap_ssid;                   // 热点的 SSID
 	int timeout;                      // WiFi 连接超时时间
+	bool configModeActive;            // 是否处于配置模式
 
 	void HandleRoot();                // 处理 Web 服务器根路径请求
 	void initSoftAp();                // 初始化 AP 模式
@@ -49,6 +50,7 @@ private:
 	void initDNS();                   // 初始化 DNS 服务器
 	void initWebserver();             // 初始化 Web 服务器
 	bool scanWiFi();                  // 扫描 WiFi 网络
+	static void reconnectTask(void *param); // 重新连接任务
 };
 
 #endif

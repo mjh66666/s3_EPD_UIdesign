@@ -9,10 +9,12 @@
 #include "wifiuser.h"
 
 WifiUser::WifiUser(const char *ap_ssid, int timeout)
-	: server(webPort), apIP(192, 168, 4, 1)
+	: server(webPort), apIP(192, 168, 4, 1), configModeActive(false)
 {
 	this->ap_ssid = ap_ssid; // 将传入的参数赋值给成员变量
 	this->timeout = timeout; // 同样处理 timeout
+	//this->connectWiFi(); // 尝试连接 WiFi
+	xTaskCreatePinnedToCore(WifiUser::reconnectTask, "ReconnectTask", 8142, this, 1, NULL, 0); // 创建重新连接任务
 }
 
 /**
@@ -30,12 +32,24 @@ WifiUser::WifiUser(const char *ap_ssid, int timeout)
  */
 void WifiUser::HandleRoot()
 {
+	static unsigned long lastScanTime = 0;
+	const unsigned long SCAN_INTERVAL = 5000; // 5秒间隔
+
+	// 只有在间隔时间后才重新扫描
+	if (millis() - lastScanTime > SCAN_INTERVAL) {
+		LOG("Rescanning WiFi networks...");
+		scanWiFi();
+		lastScanTime = millis();
+	}
+	else {
+		LOG("Using cached WiFi scan results");
+	}
+
 	File file = SPIFFS.open("/index.html", "r");
 	if (!file) {
 		server.send(500, "text/plain", "Failed to open index.html");
 		return;
 	}
-
 	String html = file.readString(); // 读取文件内容
 	file.close();
 
@@ -91,7 +105,6 @@ void WifiUser::handleConfigWifi()
  */
 void WifiUser::handleNotFound()
 {
-	WifiUser::HandleRoot();
 	server.send(404, "text/html", "<h1>404 Not Found</h1><p>The requested resource was not found on this server.</p>");
 }
 
@@ -203,7 +216,7 @@ void WifiUser::connectWiFi(int timeout_s)
 		timeout_s = this->timeout;
 	}
 	LOG("Connecting to WiFi...");
-	WiFi.mode(WIFI_STA);
+	WiFi.mode(WIFI_STA);//站点模式，用于配网
 	WiFi.setAutoConnect(true);
 	WiFi.setAutoReconnect(true);
 
@@ -231,6 +244,8 @@ void WifiUser::connectWiFi(int timeout_s)
 	LOGF("Password: %s", WiFi.psk().c_str());
 	LOGF("Local IP: %s, Gateway IP: %s", WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str());
 	LOGF("WiFi status: %d", WiFi.status());
+
+	configModeActive = false; // 连接成功后，配置模式不再活跃
 	server.stop();
 }
 
@@ -241,6 +256,13 @@ void WifiUser::connectWiFi(int timeout_s)
  */
 void WifiUser::wifiConfig()
 {
+	if (configModeActive) {
+		LOG("Config mode already active, skipping...");
+		return;
+	}
+
+	configModeActive = true;
+
 	// 停止可能正在运行的服务
 	dnsserver.stop();
 	server.close();
@@ -256,8 +278,6 @@ void WifiUser::wifiConfig()
 	// 初始化 Web 服务器
 	initWebserver();
 
-	// 扫描 WiFi 网络
-	scanWiFi();
 }
 
 /**
@@ -282,30 +302,38 @@ void WifiUser::removeWifi()
  */
 void WifiUser::checkConnect(bool reConnect)
 {
-	static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
-	static unsigned long lastReconnectAttempt = 0; // 上次重新连接的时间
+	static wl_status_t lastStatus = WL_IDLE_STATUS;
+	static unsigned long lastReconnectAttempt = 0;
 
 	wl_status_t currentStatus = WiFi.status();
+
+	// 处理状态变化
 	if (currentStatus != lastStatus) {
 		if (currentStatus == WL_CONNECTED) {
 			LOG("WiFi connected successfully.");
 			LOGF("SSID: %s", WiFi.SSID().c_str());
 			LOGF("Local IP: %s", WiFi.localIP().toString().c_str());
+			configModeActive = false; // 连接成功后，配置模式不再活跃
 		}
 		else {
 			LOG("WiFi is not connected.");
-			if (reConnect && millis() - lastReconnectAttempt > 30000) { // 每 30 秒尝试一次
-				lastReconnectAttempt = millis();
-				if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-					LOG("Starting AP mode for WiFi configuration...");
-					wifiConfig(); // 进入 WiFi 配置模式
-				}
-				else {
-					LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
-				}
+		}
+		lastStatus = currentStatus;
+	}
+
+	// 🔥 新增：无论状态是否变化，都检查是否需要重连
+	if (currentStatus != WL_CONNECTED && reConnect && !configModeActive) {
+		if (millis() - lastReconnectAttempt > 30000) { // 每 30 秒尝试一次
+			lastReconnectAttempt = millis();
+			if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+				LOG("Starting AP mode for WiFi configuration...");
+				configModeActive = true;
+				wifiConfig(); // 进入 WiFi 配置模式
+			}
+			else {
+				LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
 			}
 		}
-		lastStatus = currentStatus; // 更新状态
 	}
 }
 
@@ -330,4 +358,20 @@ void WifiUser::checkDNS_HTTP()
 bool WifiUser::isConnected()
 {
 	return WiFi.status() == WL_CONNECTED;
+}
+
+/**
+ * @brief 断线重连的周期性任务
+ *
+ * @return 无
+ */
+void WifiUser::reconnectTask(void *param)
+{
+	WifiUser *self = static_cast<WifiUser *>(param);
+	while (true) {
+		self->checkConnect(true); // 检查连接状态并尝试重新连接
+		self->checkDNS_HTTP(); // 处理 DNS 和 HTTP 请求
+		// 如果当前模式是 AP 或 AP_STA，则处理客户端请求
+		vTaskDelay(pdMS_TO_TICKS(1000)); // 每 1000ms 秒检查一次
+	}
 }

@@ -2,105 +2,78 @@
  * @Author: mojionghao
  * @Date: 2025-06-17 15:36:00
  * @LastEditors: mojionghao
- * @LastEditTime: 2025-06-17 19:52:05
- * @FilePath: \s3_EPD_UIdesign\src\button.cpp
+ * @LastEditTime: 2025-06-24 11:33:17
+ * @FilePath: \s3_EPD_UIdesign\src\button\button.cpp
  * @Description:
  */
-/***
- * @Author: mojionghao
- * @Date: 2025-06-17 15:36:00
- * @LastEditors: mojionghao
- * @LastEditTime: 2025-06-17 16:03:04
- * @FilePath: \s3_EPD_UIdesign\src\button.cpp
- * @Description:
- */
-#ifndef BUTTON_H
-#define BUTTON_H
+#include "button.h"
 
-#include <Arduino.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/queue.h>
+Button::Button(uint8_t pin, void (*shortPressCallback)(), void (*longPressCallback)(), unsigned long debounceDelay, unsigned long longPressDelay)
+	: _pin(pin), _shortPressCallback(shortPressCallback), _longPressCallback(longPressCallback), _debounceDelay(debounceDelay), _longPressDelay(longPressDelay)
+{
+	Serial.printf("Button initialized on pin %d\n", _pin);
+	pinMode(_pin, INPUT_PULLUP);
+	_queue = xQueueCreate(10, sizeof(uint8_t));
+	xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 2048, this, 1, NULL, 0);
+	xTaskCreatePinnedToCore(eventHandlerTask, "ButtonEventHandler", 2048, this, 1, NULL, 0);
+}
 
-class Button {
-public:
-	// 构造函数，初始化按钮引脚、短按和长按回调函数
-	Button(uint8_t pin, void (*shortPressCallback)(), void (*longPressCallback)() = nullptr, unsigned long debounceDelay = 50, unsigned long longPressDelay = 1000)
-		: _pin(pin), _shortPressCallback(shortPressCallback), _longPressCallback(longPressCallback), _debounceDelay(debounceDelay), _longPressDelay(longPressDelay)
-	{
-		pinMode(_pin, INPUT_PULLUP); // 设置为输入模式，使用内部上拉电阻
-		_queue = xQueueCreate(10, sizeof(uint8_t)); // 创建队列
-		xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 2048, this, 1, NULL, 0); // 创建任务
-	}
+Button::~Button()
+{
+	vQueueDelete(_queue);
+}
 
-	// 析构函数，删除队列
-	~Button()
-	{
-		vQueueDelete(_queue); // 删除队列
-	}
+void Button::buttonTask(void *param)
+{
+	Button *button = static_cast<Button *>(param);
+	unsigned long lastDebounceTime = 0;
+	unsigned long pressStartTime = 0;
+	int lastState = HIGH;
+	bool longPressSent = false; // 新增标志
+	Serial.printf("Button task started on pin %d\n", button->_pin);
+	while (true) {
+		int currentState = digitalRead(button->_pin); // 读取当前按钮状态
 
-private:
-	uint8_t _pin;                  // 按钮引脚
-	void (*_shortPressCallback)(); // 短按回调函数
-	void (*_longPressCallback)();  // 长按回调函数
-	unsigned long _debounceDelay;  // 去抖时间（毫秒）
-	unsigned long _longPressDelay; // 长按时间（毫秒）
-	QueueHandle_t _queue;          // FreeRTOS 队列
-
-	// 按钮任务
-	static void buttonTask(void *param)
-	{
-		Button *button = static_cast<Button *>(param);
-		unsigned long lastDebounceTime = 0;
-		unsigned long pressStartTime = 0;
-		int lastState = HIGH;
-
-		while (true) {
-			int currentState = digitalRead(button->_pin);
-
-			// 检查状态是否发生变化
-			if (currentState != lastState) {
-				lastDebounceTime = millis(); // 记录状态变化的时间
-				if (currentState == LOW) {
-					pressStartTime = millis(); // 记录按下的开始时间
-				}
+		if (currentState != lastState) { //电平发生变化
+			lastDebounceTime = millis(); //记录电平变化时间
+			if (currentState == LOW) {
+				pressStartTime = millis();//记录按下的时间
+				longPressSent = false; // 按下时重置
 			}
-
-			// 如果状态稳定超过去抖时间
-			if ((millis() - lastDebounceTime) > button->_debounceDelay) {
-				if (currentState == LOW && lastState == HIGH) { // 短按事件
-					uint8_t event = 1; // 短按事件
-					xQueueSend(button->_queue, &event, portMAX_DELAY);
-				}
-
-				if (currentState == LOW && (millis() - pressStartTime) > button->_longPressDelay) { // 长按事件
-					uint8_t event = 2; // 长按事件
+			// 松开时检测短按（且未触发过长按）
+			if (currentState == HIGH && lastState == LOW) {
+				if (!longPressSent && (millis() - pressStartTime) >= button->_debounceDelay) {
+					uint8_t event = 1;
+					Serial.println("Button short press detected");
 					xQueueSend(button->_queue, &event, portMAX_DELAY);
 				}
 			}
-
-			lastState = currentState; // 更新按钮状态
-			vTaskDelay(pdMS_TO_TICKS(10)); // 延时 10 毫秒，避免占用过多 CPU
 		}
+		// 按下且超过长按时间，且未触发过长按
+		if (currentState == LOW && !longPressSent && (millis() - pressStartTime) > button->_longPressDelay) {
+			uint8_t event = 2;
+			Serial.println("Button long press detected");
+			xQueueSend(button->_queue, &event, portMAX_DELAY);
+			longPressSent = true;
+		}
+		lastState = currentState;
+		vTaskDelay(pdMS_TO_TICKS(10));
 	}
+}
 
-	// 按钮事件处理任务
-	static void eventHandlerTask(void *param)
-	{
-		Button *button = static_cast<Button *>(param);
-		uint8_t event;
-
-		while (true) {
-			if (xQueueReceive(button->_queue, &event, portMAX_DELAY)) {
-				if (event == 1 && button->_shortPressCallback) {
-					button->_shortPressCallback(); // 调用短按回调函数
-				}
-				else if (event == 2 && button->_longPressCallback) {
-					button->_longPressCallback(); // 调用长按回调函数
-				}
+void Button::eventHandlerTask(void *param)
+{
+	Button *button = static_cast<Button *>(param);
+	uint8_t event;
+	Serial.printf("Button event handler task started on pin %d\n", button->_pin);
+	while (true) {
+		if (xQueueReceive(button->_queue, &event, portMAX_DELAY)) {
+			if (event == 1 && button->_shortPressCallback) {
+				button->_shortPressCallback();
+			}
+			else if (event == 2 && button->_longPressCallback) {
+				button->_longPressCallback();
 			}
 		}
 	}
-};
-
-#endif
+}

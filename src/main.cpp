@@ -45,6 +45,8 @@ const char *password = "12345678";
 #define USER_KEY "0781c49e69024849b7cb76ef017ca453"
 const String  city = "从化" ;
 
+WifiUser *wifiuser = nullptr; // 创建 WifiUser 对象
+Button *gpio0Button = nullptr;
 // 连接WiFi
 void connectWiFi()
 {
@@ -58,6 +60,13 @@ void connectWiFi()
 	Serial.print("IP address: ");
 	Serial.println(WiFi.localIP());
 }
+
+void checkGpioTask()
+{
+	Serial.println("GPIO0 按下，清除网络信息...");
+	wifiuser->removeWifi(); // 调用清除网络信息的函数
+}
+
 
 void test_display_main()
 {
@@ -129,10 +138,18 @@ void test_display_main()
 void setup()
 {
 	Serial.begin(115200);
-	connectWiFi();
+	Serial.println("Starting EPD UI Design...");
+	if (!SPIFFS.begin(true)) {
+		Serial.println("Failed to mount SPIFFS");
+		return;
+	}
+	gpio0Button = new Button(GPIO0_PIN_WIFIRESET, checkGpioTask); // 现在串口已初始化
+	wifiuser = new WifiUser("EZ_EPD", 10);
+	// 初始尝试连接 WiFi
+	wifiuser->connectWiFi();
+	// 其它初始化...
 	initNTP();
 	epd_Init();
-	test_display_main();
 }
 
 void loop()
