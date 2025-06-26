@@ -13,11 +13,11 @@
 #define WIFIUSER_DEBUG 1 // 设置为 1 启用日志，设置为 0 禁用日志
 
 #if WIFIUSER_DEBUG
-    #define LOG(x) Serial.println(x)
-    #define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+	#define LOG(x) Serial.println(x)
+	#define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
 #else
-    #define LOG(x)
-    #define LOGF(fmt, ...)
+	#define LOG(x)
+	#define LOGF(fmt, ...)
 #endif
 
 class WifiUser {
@@ -49,6 +49,7 @@ private:
 	void initDNS();                   // 初始化 DNS 服务器
 	void initWebserver();             // 初始化 Web 服务器
 	bool scanWiFi();                  // 扫描 WiFi 网络
+	static void reconnectTask(void *param);
 };
 
 #endif

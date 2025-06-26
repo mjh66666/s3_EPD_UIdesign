@@ -13,6 +13,8 @@ WifiUser::WifiUser(const char *ap_ssid, int timeout)
 {
 	this->ap_ssid = ap_ssid; // 将传入的参数赋值给成员变量
 	this->timeout = timeout; // 同样处理 timeout
+	connectWiFi(timeout);
+	xTaskCreatePinnedToCore(WifiUser::reconnectTask, "ReconnectTask", 8192, this, 1, NULL, 0);
 }
 
 /**
@@ -330,4 +332,14 @@ void WifiUser::checkDNS_HTTP()
 bool WifiUser::isConnected()
 {
 	return WiFi.status() == WL_CONNECTED;
+}
+
+void WifiUser::reconnectTask(void *param)
+{
+	WifiUser *self = static_cast<WifiUser *>(param);
+	while (true) {
+		self->checkConnect(true); // 检查连接状态并尝试重新连接
+		self->checkDNS_HTTP(); // 处理 DNS 和 HTTP 请求
+		vTaskDelay(pdMS_TO_TICKS(500)); // 每 500ms 检查一次
+	}
 }
