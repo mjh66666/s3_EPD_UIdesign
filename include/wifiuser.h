@@ -50,6 +50,7 @@ private:
 	void initWebserver();             // 初始化 Web 服务器
 	bool scanWiFi();                  // 扫描 WiFi 网络
 	static void reconnectTask(void *param);
+	void tryReconnectPreviousWiFi();
 };
 
 #endif

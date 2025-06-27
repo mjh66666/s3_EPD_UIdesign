@@ -1,5 +1,13 @@
 /***
  * @Author: mojionghao
+ * @Date: 2025-06-18 20:07:46
+ * @LastEditors: mojionghao
+ * @LastEditTime: 2025-06-27 21:52:18
+ * @FilePath: \s3_EPD_UIdesign\src\wifiuser\wifiuser.cpp
+ * @Description:
+ */
+/***
+ * @Author: mojionghao
  * @Date: 2025-05-21 20:36:49
  * @LastEditors: mojionghao
  * @LastEditTime: 2025-05-21 22:51:04
@@ -32,6 +40,7 @@ WifiUser::WifiUser(const char *ap_ssid, int timeout)
  */
 void WifiUser::HandleRoot()
 {
+	scanWiFi();
 	File file = SPIFFS.open("/index.html", "r");
 	if (!file) {
 		server.send(500, "text/plain", "Failed to open index.html");
@@ -93,8 +102,20 @@ void WifiUser::handleConfigWifi()
  */
 void WifiUser::handleNotFound()
 {
-	WifiUser::HandleRoot();
-	server.send(404, "text/html", "<h1>404 Not Found</h1><p>The requested resource was not found on this server.</p>");
+	String uri = server.uri();
+	LOG("404 - Request for: " + uri);
+
+	// 对于浏览器的自动请求，直接返回404
+	if (uri == "/favicon.ico" || uri == "/robots.txt" || uri.startsWith("/css/") || uri.startsWith("/js/") ||
+	        uri.startsWith("/images/")) {
+		server.send(404, "text/plain", "Not Found");
+		return;
+	}
+
+	// 对于其他未知路径，重定向到根路径（不要直接调用HandleRoot）
+	server.sendHeader("Location", "/");
+	server.send(302, "text/plain", "Redirecting to main page...");
+
 }
 
 /**
@@ -257,9 +278,6 @@ void WifiUser::wifiConfig()
 
 	// 初始化 Web 服务器
 	initWebserver();
-
-	// 扫描 WiFi 网络
-	scanWiFi();
 }
 
 /**
@@ -282,34 +300,105 @@ void WifiUser::removeWifi()
  *
  * @param reConnect 是否允许重新连接
  */
+// void WifiUser::checkConnect(bool reConnect)
+// {
+//  static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
+//  static unsigned long lastReconnectAttempt = 0; // 上次重新连接的时间
+
+//  wl_status_t currentStatus = WiFi.status();
+//  if (currentStatus != lastStatus) {
+//      if (currentStatus == WL_CONNECTED) {
+//          LOG("WiFi connected successfully.");
+//          LOGF("SSID: %s", WiFi.SSID().c_str());
+//          LOGF("Local IP: %s", WiFi.localIP().toString().c_str());
+//      }
+//      else {
+//          LOG("WiFi is not connected.");
+//          if (reConnect && millis() - lastReconnectAttempt > 15000) { // 每 15 秒尝试一次
+//              lastReconnectAttempt = millis();
+//              if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+//                  LOG("Starting AP mode for WiFi configuration...");
+//                  wifiConfig(); // 进入 WiFi 配置模式
+//              }
+//              else {
+//                  LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
+//              }
+//          }
+//      }
+//      lastStatus = currentStatus; // 更新状态
+//  }
+// }
+
+
 void WifiUser::checkConnect(bool reConnect)
 {
 	static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
 	static unsigned long lastReconnectAttempt = 0; // 上次重新连接的时间
+	static int reconnectAttempts = 0; // 重连尝试次数
+	static bool tryingReconnect = false; // 是否正在尝试重连
 
 	wl_status_t currentStatus = WiFi.status();
+
 	if (currentStatus != lastStatus) {
 		if (currentStatus == WL_CONNECTED) {
 			LOG("WiFi connected successfully.");
 			LOGF("SSID: %s", WiFi.SSID().c_str());
 			LOGF("Local IP: %s", WiFi.localIP().toString().c_str());
+			reconnectAttempts = 0; // 重置重连次数
+			tryingReconnect = false;
 		}
 		else {
 			LOG("WiFi is not connected.");
-			if (reConnect && millis() - lastReconnectAttempt > 30000) { // 每 30 秒尝试一次
-				lastReconnectAttempt = millis();
-				if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-					LOG("Starting AP mode for WiFi configuration...");
-					wifiConfig(); // 进入 WiFi 配置模式
-				}
-				else {
-					LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
-				}
-			}
+			reconnectAttempts = 0; // 重置重连次数，开始新的重连周期
+			tryingReconnect = false;
 		}
 		lastStatus = currentStatus; // 更新状态
 	}
+
+	// 如果断开连接且允许重连
+	if (reConnect && currentStatus != WL_CONNECTED &&
+	        millis() - lastReconnectAttempt > 15000) { // 每 15 秒尝试一次
+
+		lastReconnectAttempt = millis();
+
+		if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+			if (reconnectAttempts < 3) { // 先尝试3次重连之前的WiFi
+				LOGF("Attempting to reconnect to previous WiFi (attempt %d/3)...", reconnectAttempts + 1);
+				tryingReconnect = true;
+				tryReconnectPreviousWiFi();
+				reconnectAttempts++;
+			}
+			else {
+				LOG("Failed to reconnect to previous WiFi after 3 attempts. Starting AP mode for WiFi configuration...");
+				wifiConfig(); // 进入 WiFi 配置模式
+				reconnectAttempts = 0; // 重置计数器
+			}
+		}
+		else {
+			LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
+		}
+	}
 }
+
+
+/**
+ * @brief 尝试重连之前连接过的WiFi
+ *
+ * 使用NVS中保存的WiFi凭据尝试重新连接
+ */
+void WifiUser::tryReconnectPreviousWiFi()
+{
+	WiFi.mode(WIFI_STA);
+	WiFi.setAutoConnect(true);
+	WiFi.setAutoReconnect(true);
+
+	// 尝试使用NVS中保存的凭据连接
+	WiFi.begin();
+
+	LOG("Trying to reconnect to previous WiFi...");
+	// 不等待连接完成，让checkConnect函数在下次调用时检查状态
+}
+
 
 /**
  * @brief 处理 DNS 和 HTTP 请求
@@ -340,6 +429,7 @@ void WifiUser::reconnectTask(void *param)
 	while (true) {
 		self->checkConnect(true); // 检查连接状态并尝试重新连接
 		self->checkDNS_HTTP(); // 处理 DNS 和 HTTP 请求
-		vTaskDelay(pdMS_TO_TICKS(500)); // 每 500ms 检查一次
+		vTaskDelay(pdMS_TO_TICKS(200)); // 每 200ms 检查一次
 	}
 }
+

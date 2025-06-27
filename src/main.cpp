@@ -145,12 +145,12 @@ void setup()
 	}
 	gpio0Button = new Button(GPIO0_PIN_WIFIRESET, checkGpioTask); // 现在串口已初始化
 	wifiuser = new WifiUser("EZ_EPD", 10);
-	Serial.println("wifiuser created");
-	initNTP();
-	Serial.println("NTP initialized");
-	epd_Init();
-	Serial.println("EPD initialized");
-	test_display_main(); // 测试主界面显示
+	// Serial.println("wifiuser created");
+	// initNTP();
+	// Serial.println("NTP initialized");
+	// epd_Init();
+	// Serial.println("EPD initialized");
+	// test_display_main(); // 测试主界面显示
 }
 
 void loop()
