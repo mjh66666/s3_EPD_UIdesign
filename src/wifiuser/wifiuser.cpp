@@ -300,36 +300,6 @@ void WifiUser::removeWifi()
  *
  * @param reConnect 是否允许重新连接
  */
-// void WifiUser::checkConnect(bool reConnect)
-// {
-//  static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
-//  static unsigned long lastReconnectAttempt = 0; // 上次重新连接的时间
-
-//  wl_status_t currentStatus = WiFi.status();
-//  if (currentStatus != lastStatus) {
-//      if (currentStatus == WL_CONNECTED) {
-//          LOG("WiFi connected successfully.");
-//          LOGF("SSID: %s", WiFi.SSID().c_str());
-//          LOGF("Local IP: %s", WiFi.localIP().toString().c_str());
-//      }
-//      else {
-//          LOG("WiFi is not connected.");
-//          if (reConnect && millis() - lastReconnectAttempt > 15000) { // 每 15 秒尝试一次
-//              lastReconnectAttempt = millis();
-//              if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-//                  LOG("Starting AP mode for WiFi configuration...");
-//                  wifiConfig(); // 进入 WiFi 配置模式
-//              }
-//              else {
-//                  LOG("AP mode is already active. Please connect to the AP to configure WiFi.");
-//              }
-//          }
-//      }
-//      lastStatus = currentStatus; // 更新状态
-//  }
-// }
-
-
 void WifiUser::checkConnect(bool reConnect)
 {
 	static wl_status_t lastStatus = WL_IDLE_STATUS; // 上一次的 WiFi 状态
@@ -362,8 +332,8 @@ void WifiUser::checkConnect(bool reConnect)
 		lastReconnectAttempt = millis();
 
 		if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
-			if (reconnectAttempts < 3) { // 先尝试3次重连之前的WiFi
-				LOGF("Attempting to reconnect to previous WiFi (attempt %d/3)...", reconnectAttempts + 1);
+			if (reconnectAttempts < 10) { // 先尝试10次重连之前的WiFi
+				LOGF("Attempting to reconnect to previous WiFi (attempt %d/10)...", reconnectAttempts + 1);
 				tryingReconnect = true;
 				tryReconnectPreviousWiFi();
 				reconnectAttempts++;
@@ -379,7 +349,6 @@ void WifiUser::checkConnect(bool reConnect)
 		}
 	}
 }
-
 
 /**
  * @brief 尝试重连之前连接过的WiFi
