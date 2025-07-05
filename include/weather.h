@@ -30,6 +30,7 @@ struct weatherHourlyInfo {
 	String fxTime;
 	int temp;
 	int icon;
+	int pop;
 	String text;
 	String windDir;
 	String windScale;
@@ -55,9 +56,9 @@ public:
 	{
 		return dayAfterTomorrow;
 	}
-	const weatherHourlyInfo &getHourly(int idx) const
+	const weatherHourlyInfo *getHourly() const
 	{
-		return hourly[idx];
+		return hourly;
 	}
 
 private:

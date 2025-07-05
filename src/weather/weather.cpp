@@ -2,6 +2,14 @@
  * @Author: mojionghao
  * @Date: 2025-05-21 10:56:36
  * @LastEditors: mojionghao
+ * @LastEditTime: 2025-07-05 09:25:12
+ * @FilePath: \s3_EPD_UIdesign\src\weather\weather.cpp
+ * @Description:
+ */
+/***
+ * @Author: mojionghao
+ * @Date: 2025-05-21 10:56:36
+ * @LastEditors: mojionghao
  * @LastEditTime: 2025-05-21 11:20:24
  * @FilePath: \s3_EPD_UIdesign\src\weather.cpp
  * @Description:
@@ -242,6 +250,12 @@ bool Weather::parseHourlyWeatherInfo(const JsonObject &src, weatherHourlyInfo &d
 	}
 	if (src.containsKey("windScale")) {
 		dest.windScale = src["windScale"].as<String>();
+	}
+	else {
+		ok = false;
+	}
+	if (src.containsKey("pop")) {
+		dest.pop = src["pop"].as<int>();
 	}
 	else {
 		ok = false;
