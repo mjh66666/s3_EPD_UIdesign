@@ -12,7 +12,7 @@ typedef enum {
 	MENU_HOME = 0, //主菜单：时间 今日天气 待办
 	MENU_TOMATO, //番茄钟菜单
 	MENU_CLASS,  //课程表菜单
-	MENU_7DWEATHER, //7日天气菜单
+	MENU_7HWEATHER, //7日天气菜单
 	MENU_SETTINGS,  //设置菜单
 } MenuIndex;
 
@@ -22,18 +22,31 @@ typedef enum {
 	REFRESH_FULL    // 全局刷新
 } RefreshType;
 
-typedef enum {
-	updata_flag_none = 0, // 无更新
-	updata_flag_time, // 更新时间
-	updata_flag_1dweather, // 更新天气
-} UpdateFlag;
 
 
 // UI信息结构体
 typedef struct {
-	MenuIndex last_currentMenu;      // 当前菜单索引
-	UpdateFlag updateFlag; // 更新标志
+	MenuIndex currentMenu;      // 当前菜单索引
+	volatile bool updateFlag; // 更新标志
 	RefreshType refreshType; // 刷新类型
 } UIStatus;
+
+#ifndef LOG
+	#define LOG(x) Serial.println(x)
+#endif
+
+#ifndef LOGF
+	#define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
+#endif
+#define MAIN_DEBUG 1 // 设置为 1 启用日志，设置为 0 禁用日志
+
+#if MAIN_DEBUG
+	// 区分 LOG 和 LOGF
+	#define LOG(x) Serial.println("[MAIN][LOG] " + String(x))
+	#define LOGF(fmt, ...) Serial.printf("[MAIN][LOGF] " fmt, ##__VA_ARGS__)
+#else
+	#define LOG(x)
+	#define LOGF(fmt, ...)
+#endif
 
 #endif // MAIN_H

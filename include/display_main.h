@@ -37,7 +37,7 @@ struct display_main_t {
 	display_main_t() : selected_todo(-1) {}
 };
 
-void display_main(display_main_t *display_main_data, UIStatus *uis);
-void display_main_todo(display_main_t *display_main_data);
+void display_main(const display_main_t *display_main_data, UIStatus *uis);
+void display_main_todo(const display_main_t *display_main_data);
 void show_weathericons(int weather_code);
 #endif // _DISPLAY_MAIN_H_

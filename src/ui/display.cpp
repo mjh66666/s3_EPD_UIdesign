@@ -118,7 +118,7 @@ void epd_layout_hello()
 	do {
 		display.fillScreen(GxEPD_WHITE);
 		display.setCursor(x, y);
-		display.print("hello");
+		display.print("请访问192.168.4.1");
 	}
 	while (display.nextPage());
 }
@@ -127,17 +127,17 @@ void epd_layout_hello()
 
 void epd_layout_TIME(int hour, int minute)
 {
-  char str[6];
-  snprintf(str, sizeof(str), "%02d:%02d", hour, minute);
+	char str[6];
+	snprintf(str, sizeof(str), "%02d:%02d", hour, minute);
 
-  u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
-  int16_t str_w = u8g2_epd.getUTF8Width(str);
-  int16_t ascent = u8g2_epd.getFontAscent();
-  int16_t descent = u8g2_epd.getFontDescent();
-  int16_t font_h = ascent - descent;
-  int16_t x = 0 + (175 - str_w) / 2;
-  int16_t y = 27 + (55 - font_h) / 2 + ascent;
-  u8g2_epd.drawUTF8(x, y, str);
+	u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
+	int16_t str_w = u8g2_epd.getUTF8Width(str);
+	int16_t ascent = u8g2_epd.getFontAscent();
+	int16_t descent = u8g2_epd.getFontDescent();
+	int16_t font_h = ascent - descent;
+	int16_t x = 0 + (175 - str_w) / 2;
+	int16_t y = 27 + (55 - font_h) / 2 + ascent;
+	u8g2_epd.drawUTF8(x, y, str);
 }
 
 // // void epd_layout_static()

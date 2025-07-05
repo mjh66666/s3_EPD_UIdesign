@@ -1,10 +1,10 @@
-/*** 
+/***
  * @Author: mojionghao
  * @Date: 2025-06-18 21:12:40
  * @LastEditors: mojionghao
  * @LastEditTime: 2025-06-24 11:06:58
  * @FilePath: \s3_EPD_UIdesign\src\ui\display_main.cpp
- * @Description: 
+ * @Description:
  */
 /***
  * @Author: mojionghao
@@ -54,14 +54,13 @@ extern GxEPD2_BW<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display;
 #define AREA_TODO_W       121  // 296-175
 #define AREA_TODO_H       112  // 128-16
 static uint8_t partial_count = 0; // 局部刷新标志
-void display_main(display_main_t *display_main_data, UIStatus *uis)
+void display_main(const display_main_t *display_main_data, UIStatus *uis)
 {
 
 	u8g2_epd.setBackgroundColor(GxEPD_WHITE);              // 设置背景色为白色
 	u8g2_epd.setFontMode(1);                               // 设置字体透明模式
 	u8g2_epd.setFontDirection(0);                          // 设置字体方向，从左到右
 	u8g2_epd.setForegroundColor(GxEPD_BLACK);              // 设置前景色为黑色
-
 	//如果当前界面是全局刷新或局部刷新次数超过10次，则进行全局刷新
 	if (uis->refreshType == REFRESH_FULL || partial_count > 10) {
 		display.setFullWindow(); // 设置全局刷新窗口
@@ -146,7 +145,7 @@ void display_main(display_main_t *display_main_data, UIStatus *uis)
 	while (display.nextPage());   // 绘制下一页
 }
 
-void display_main_todo(display_main_t *display_main_data)
+void display_main_todo(const display_main_t *display_main_data)
 {
 	display.setPartialWindow(AREA_TODO_X + 5, AREA_TODO_Y + 32, AREA_TODO_W, AREA_TODO_H - 32);
 
