@@ -1,3 +1,11 @@
+/*** 
+ * @Author: mojionghao
+ * @Date: 2025-06-18 21:13:20
+ * @LastEditors: mojionghao
+ * @LastEditTime: 2025-07-06 16:30:10
+ * @FilePath: \s3_EPD_UIdesign\include\display_main.h
+ * @Description: 
+ */
 /***
  * @Author: mojionghao
  * @Date: 2025-06-18 21:13:20

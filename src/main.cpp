@@ -10,15 +10,11 @@
 #include "freertos/timers.h"
 #include "freertos/semphr.h"
 #include "main.h"
+#include "debug.h"  // 包含新的调试系统
 
 #define GPIO0_PIN_WIFIRESET 0
 #define GPIO45_PIN_USER 45
 #define USER_KEY "0781c49e69024849b7cb76ef017ca453"
-
-// 调试宏定义
-#define DEBUG_PRINT(x) Serial.println("[DEBUG] " + String(x))
-#define DEBUG_PRINTF(fmt, ...) Serial.printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
-#define ERROR_PRINT(x) Serial.println("[ERROR] " + String(x))
 
 
 const String city = "东莞";
@@ -39,47 +35,58 @@ void display_update(void *param);
 
 void checkGpio45Task()
 {
-	DEBUG_PRINT("GPIO0 按下，清除网络信息...");
+	FUNC_ENTER();
+	DEBUG_PRINT("GPIO45 按下，清除网络信息...");
+
 	if (wifiuser != nullptr) {
 		wifiuser->removeWifi();
-		DEBUG_PRINT("网络信息清除完成");
+		INFO_PRINT("网络信息清除完成");
 	}
 	else {
 		ERROR_PRINT("wifiuser为空指针");
 	}
+
+	FUNC_EXIT();
 }
 
 void checkGpio0Task()
 {
+	FUNC_ENTER();
 	DEBUG_PRINTF("按键触发，当前菜单: %d", uis.currentMenu);
+
 	if (uis.currentMenu == MENU_HOME) {
 		uis.currentMenu = MENU_7HWEATHER;
 		uis.refreshType = REFRESH_FULL;
-		DEBUG_PRINT("切换到天气界面");
+		INFO_PRINT("切换到天气界面");
 	}
 	else if (uis.currentMenu == MENU_7HWEATHER) {
 		uis.currentMenu = MENU_HOME;
 		uis.refreshType = REFRESH_FULL;
-		DEBUG_PRINT("切换回主页");
+		INFO_PRINT("切换回主页");
 	}
+
 	uis.updateFlag = true;
-	DEBUG_PRINT("更新标志已设置");
+	VERBOSE_PRINT("更新标志已设置");
+	FUNC_EXIT();
 }
 
 void initMutex()
 {
+	FUNC_ENTER();
 	DEBUG_PRINT("初始化互斥锁...");
+
 	epdMutex = xSemaphoreCreateMutex();
-	if (epdMutex == nullptr) {
-		ERROR_PRINT("epdMutex create failed");
-	}
-	else {
-		DEBUG_PRINT("epdMutex create success");
-	}
+	ERROR_IF(epdMutex == nullptr, "epdMutex创建失败");
+	DEBUG_IF(epdMutex != nullptr, "epdMutex创建成功: %p", epdMutex);
+
+	FUNC_EXIT();
 }
 
 void init_updata()
 {
+	FUNC_ENTER();
+	PERF_START(init_updata);
+
 	DEBUG_PRINT("开始初始化数据...");
 
 	// 检查关键变量状态
@@ -90,27 +97,24 @@ void init_updata()
 	display_main_data.new_timeinfo = newtime;
 	display_main_data.humi = 66;
 	display_main_data.temp = 36;
-	DEBUG_PRINT("基础数据初始化完成");
+	VERBOSE_PRINT("基础数据初始化完成");
 
 	// 安全的天气数据获取
 	if (weather != nullptr) {
-		DEBUG_PRINT("开始获取天气数据...");
+		INFO_PRINT("开始获取天气数据...");
 
 		try {
-			// 先检查weather对象状态
-			DEBUG_PRINT("调用getToday()前...");
+			VERBOSE_PRINT("调用getToday()前...");
 			const weatherDailyInfo &today_ref = weather->getToday();
-			DEBUG_PRINT("getToday()调用成功");
+			VERBOSE_PRINT("getToday()调用成功");
 
-			// 检查返回的数据是否有效
 			DEBUG_PRINTF("today_ref地址: %p", &today_ref);
-
 			display_main_data.today = today_ref;
-			DEBUG_PRINT("today数据赋值成功");
+			INFO_PRINT("today数据赋值成功");
 
 		}
 		catch (const std::exception &e) {
-			ERROR_PRINT("获取today数据异常: " + String(e.what()));
+			ERROR_PRINTF("获取today数据异常: %s", e.what());
 		}
 		catch (...) {
 			ERROR_PRINT("获取today数据发生未知异常");
@@ -122,9 +126,12 @@ void init_updata()
 			DEBUG_PRINTF("getHourly()返回指针: %p", src);
 
 			if (src != nullptr) {
-				DEBUG_PRINTF("准备拷贝%d字节数据", sizeof(weather7hinfo));
+				VERBOSE_PRINTF("准备拷贝%d字节数据", sizeof(weather7hinfo));
 				memcpy(weather7hinfo, src, sizeof(weather7hinfo));
-				DEBUG_PRINT("hourly数据拷贝成功");
+				INFO_PRINT("hourly数据拷贝成功");
+
+				// 显示第一个小时的天气数据（调试用） - 修复结构体成员名
+				DEBUG_PRINTF("首个小时天气: 温度=%d", weather7hinfo[0].temp);
 			}
 			else {
 				ERROR_PRINT("getHourly()返回空指针");
@@ -147,30 +154,32 @@ void init_updata()
 	display_main_data.todos[1] = "写代码";
 	display_main_data.todos[2] = "跑步30分钟";
 	display_main_data.todos[3] = "";
+	VERBOSE_PRINTF("TODO列表初始化完成，共%d项", TODO_MAX);
 
-	DEBUG_PRINT("init_updata完成");
+	PERF_END(init_updata);
+	FUNC_EXIT();
 }
 
 void setup()
 {
 	Serial.begin(115200);
 	delay(1000); // 给串口时间初始化
-	DEBUG_PRINT("=== EPD UI Design 启动 ===");
 
-	// 内存状态检查
-	DEBUG_PRINTF("可用堆内存: %d bytes", esp_get_free_heap_size());
-	DEBUG_PRINTF("最小可用堆内存: %d bytes", esp_get_minimum_free_heap_size());
+	printlnA("=== EPD UI Design 启动 ===");
+	MEMORY_CHECK();
 
 	if (!SPIFFS.begin(true)) {
 		ERROR_PRINT("SPIFFS挂载失败");
 		return;
 	}
-	DEBUG_PRINT("SPIFFS挂载成功");
+	INFO_PRINT("SPIFFS挂载成功");
 
+	PERF_START(epd_init);
 	DEBUG_PRINT("初始化EPD...");
 	epd_Init();
 	epd_layout_hello();
-	DEBUG_PRINT("EPD初始化完成");
+	PERF_END(epd_init);
+	INFO_PRINT("EPD初始化完成");
 
 	DEBUG_PRINT("创建按钮对象...");
 	gpio0Button = new Button(GPIO0_PIN_WIFIRESET, checkGpio0Task);
@@ -187,7 +196,7 @@ void setup()
 
 	initMutex();
 
-	DEBUG_PRINT("等待WiFi连接...");
+	INFO_PRINT("等待WiFi连接...");
 	int wifi_retry = 0;
 	while (!(wifiuser->isConnected())) {
 		if (wifi_retry % 100 == 0) {
@@ -203,84 +212,89 @@ void setup()
 	}
 
 	if (wifiuser->isConnected()) {
-		DEBUG_PRINT("WiFi连接成功");
+		INFO_PRINT("WiFi连接成功");
 		initNTP();
-		DEBUG_PRINT("NTP初始化完成");
+		INFO_PRINT("NTP初始化完成");
 
 		getLocalTime(&newtime);
-		DEBUG_PRINTF("本地时间获取完成: %d-%d-%d %d:%d:%d",
-		             newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
-		             newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+		INFO_PRINTF("本地时间获取完成: %d-%d-%d %d:%d:%d",
+		            newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+		            newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
 
+		PERF_START(weather_fetch);
 		DEBUG_PRINT("开始获取天气数据...");
 		if (weather->GetLocationCode()) {
-			DEBUG_PRINT("位置代码获取成功");
+			INFO_PRINT("位置代码获取成功");
 
 			bool hourlySuccess = weather->GetHourlyWeather();
 			bool dailySuccess = weather->Get3dWeather();
 
-			DEBUG_PRINTF("天气数据获取结果: hourly=%d, daily=%d", hourlySuccess, dailySuccess);
+			INFO_PRINTF("天气数据获取结果: hourly=%d, daily=%d", hourlySuccess, dailySuccess);
 
 			if (hourlySuccess && dailySuccess) {
-				DEBUG_PRINT("所有天气数据获取成功");
+				INFO_PRINT("所有天气数据获取成功");
 				vTaskDelay(pdMS_TO_TICKS(200));
 			}
 			else {
-				ERROR_PRINT("天气数据获取不完整");
+				WARNING_PRINT("天气数据获取不完整");
 			}
 		}
 		else {
 			ERROR_PRINT("位置代码获取失败");
 		}
+		PERF_END(weather_fetch);
 	}
 
 	// 初始化UI状态
 	uis.currentMenu = MENU_HOME;
 	uis.updateFlag = false;
 	uis.refreshType = REFRESH_FULL;
-	DEBUG_PRINTF("UI状态初始化: menu=%d, flag=%d, refresh=%d",
-	             uis.currentMenu, uis.updateFlag, uis.refreshType);
+	VERBOSE_PRINTF("UI状态初始化: menu=%d, flag=%d, refresh=%d",
+	               uis.currentMenu, uis.updateFlag, uis.refreshType);
 
 	vTaskDelay(pdMS_TO_TICKS(200));
 
 	DEBUG_PRINT("调用init_updata()...");
 	init_updata();
-	DEBUG_PRINT("init_updata()完成");
+	INFO_PRINT("init_updata()完成");
 
 	// 内存状态检查
-	DEBUG_PRINTF("初始化后可用堆内存: %d bytes", esp_get_free_heap_size());
+	MEMORY_DETAIL();
 
 	DEBUG_PRINT("创建任务...");
 	BaseType_t result1 = xTaskCreatePinnedToCore(updata_HourlyWeather, "updata_HourlyWeather", 6144, nullptr, 1, nullptr, 1);
 	BaseType_t result2 = xTaskCreatePinnedToCore(updata_time, "updata_time", 2048, nullptr, 1, nullptr, 1);
 	BaseType_t result3 = xTaskCreatePinnedToCore(display_update, "display_update", 16384, nullptr, 2, nullptr, 1);
 
-	DEBUG_PRINTF("任务创建结果: weather=%d, time=%d, display=%d", result1, result2, result3);
+	VERBOSE_PRINTF("任务创建结果: weather=%d, time=%d, display=%d", result1, result2, result3);
 
-	if (result1 != pdPASS || result2 != pdPASS || result3 != pdPASS) {
-		ERROR_PRINT("任务创建失败");
-	}
-	else {
-		DEBUG_PRINT("所有任务创建成功");
-	}
+	ERROR_IF(result1 != pdPASS || result2 != pdPASS || result3 != pdPASS, "任务创建失败");
+	INFO_IF(result1 == pdPASS && result2 == pdPASS && result3 == pdPASS, "所有任务创建成功");
 
-	DEBUG_PRINT("=== setup()完成 ===");
+	printlnA("=== setup()完成 ===");
 }
 
 void updata_HourlyWeather(void *param)
 {
-	DEBUG_PRINT("updata_HourlyWeather任务启动");
+	TASK_INFO("updata_HourlyWeather");
+	INFO_PRINT("updata_HourlyWeather任务启动");
 	int cycle_count = 0;
 
 	while (1) {
-		DEBUG_PRINTF("天气更新任务第%d次循环", ++cycle_count);
+		cycle_count++;
+		DEBUG_PRINTF("天气更新任务第%d次循环", cycle_count);
+		STACK_CHECK("updata_HourlyWeather");
 
+		PERF_START(weather_update);
 		if (weather != nullptr && weather->GetHourlyWeather()) {
-			DEBUG_PRINT("天气数据获取成功");
+			INFO_PRINT("天气数据获取成功");
 			const weatherHourlyInfo *src = weather->getHourly();
 			if (src != nullptr) {
 				memcpy(weather7hinfo, src, sizeof(weather7hinfo));
-				DEBUG_PRINT("天气数据拷贝完成");
+				VERBOSE_PRINT("天气数据拷贝完成");
+
+				// 显示更新后的天气信息
+				DEBUG_PRINTF("更新天气: 第1小时温度=%d°C", weather7hinfo[0].temp);
 			}
 			else {
 				ERROR_PRINT("getHourly()返回空指针");
@@ -289,96 +303,108 @@ void updata_HourlyWeather(void *param)
 		else {
 			ERROR_PRINT("天气数据获取失败或weather为空");
 		}
+		PERF_END(weather_update);
 
 		if (uis.currentMenu == MENU_7HWEATHER) {
 			DEBUG_PRINT("当前为天气界面，设置更新标志");
 			uis.updateFlag = true;
 		}
 
-		DEBUG_PRINT("天气任务进入休眠(30分钟)");
+		VERBOSE_PRINT("天气任务进入休眠(30分钟)");
+		TASK_DELAY_INFO("updata_HourlyWeather", 1800000);
 		vTaskDelay(pdMS_TO_TICKS(1800000)); // 30分钟
 	}
 }
 
 void updata_time(void *param)
 {
-	Serial.println("[DEBUG] updata_time任务启动");
+	TASK_INFO("updata_time");
+	INFO_PRINT("updata_time任务启动");
 	int cycle_count = 0;
 
 	while (1) {
 		cycle_count++;
-		Serial.printf("[DEBUG] 时间任务循环开始 #%d\n", cycle_count);
+		VERBOSE_PRINTF("时间任务循环开始 #%d", cycle_count);
+		STACK_CHECK("updata_time");
 
 		try {
-			Serial.println("[DEBUG] 准备调用getLocalTime");
+			VERBOSE_PRINT("准备调用getLocalTime");
 			getLocalTime(&newtime);
-			Serial.println("[DEBUG] getLocalTime调用成功");
+			VERBOSE_PRINT("getLocalTime调用成功");
 
 			display_main_data.new_timeinfo = newtime;
-			Serial.println("[DEBUG] 时间数据赋值完成");
+			VERBOSE_PRINT("时间数据赋值完成");
 
 			if (uis.currentMenu == MENU_HOME) {
-				Serial.println("[DEBUG] 当前为主页，准备设置更新标志");
+				VERBOSE_PRINT("当前为主页，准备设置更新标志");
 				uis.refreshType = REFRESH_PARTIAL;
 				uis.updateFlag = true;
-				Serial.println("[DEBUG] 更新标志设置完成");
+				VERBOSE_PRINT("更新标志设置完成");
+
+				// 显示当前时间
+				DEBUG_PRINTF("当前时间: %02d:%02d:%02d",
+				             newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
 			}
 
-			Serial.printf("[DEBUG] 时间任务即将休眠，循环#%d\n", cycle_count);
+			VERBOSE_PRINTF("时间任务即将休眠，循环#%d", cycle_count);
 		}
 		catch (...) {
-			Serial.printf("[ERROR] 时间任务异常，循环#%d\n", cycle_count);
+			ERROR_PRINTF("时间任务异常，循环#%d", cycle_count);
 		}
 
+		TASK_DELAY_INFO("updata_time", 60000);
 		vTaskDelay(pdMS_TO_TICKS(60000));
-		Serial.printf("[DEBUG] 时间任务休眠结束，循环#%d\n", cycle_count);
+		VERBOSE_PRINTF("时间任务休眠结束，循环#%d", cycle_count);
 	}
 }
 
 void display_update(void *param)
 {
-	DEBUG_PRINT("display_update任务启动");
+	TASK_INFO("display_update");
+	INFO_PRINT("display_update任务启动");
 	int update_count = 0;
 
 	while (1) {
 		if (uis.updateFlag == true) {
+			update_count++;
 			DEBUG_PRINTF("显示更新#%d: menu=%d, refresh=%d",
-			             ++update_count, uis.currentMenu, uis.refreshType);
-			DEBUG_PRINT("跳过显示函数，仅测试任务循环");
+			             update_count, uis.currentMenu, uis.refreshType);
+			STACK_CHECK("display_update");
+
 			if (xSemaphoreTake(epdMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
-				DEBUG_PRINT("获取EPD互斥锁成功");
+				VERBOSE_PRINT("获取EPD互斥锁成功");
 
 				try {
+					PERF_START(display_render);
 					switch (uis.currentMenu) {
 						case MENU_HOME:
 							DEBUG_PRINT("调用display_main()...");
 							display_main(&display_main_data, &uis);
-							DEBUG_PRINT("display_main()完成");
+							VERBOSE_PRINT("display_main()完成");
 							break;
 						case MENU_7HWEATHER:
 							DEBUG_PRINT("调用display_weather()...");
 							display_weather(weather7hinfo, &uis);
-							DEBUG_PRINT("display_weather()完成");
+							VERBOSE_PRINT("display_weather()完成");
 							break;
 						default:
-							DEBUG_PRINTF("未知菜单类型: %d", uis.currentMenu);
+							WARNING_PRINTF("未知菜单类型: %d", uis.currentMenu);
 							break;
 					}
+					PERF_END(display_render);
 				}
 				catch (...) {
 					ERROR_PRINT("显示函数调用异常");
 				}
 
 				xSemaphoreGive(epdMutex);
-				DEBUG_PRINT("释放EPD互斥锁");
+				VERBOSE_PRINT("释放EPD互斥锁");
 				uis.updateFlag = false;
-				DEBUG_PRINT("更新标志已清除");
-
+				VERBOSE_PRINT("更新标志已清除");
 			}
 			else {
 				ERROR_PRINT("获取EPD互斥锁超时");
 			}
-
 		}
 
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -391,8 +417,7 @@ void loop()
 
 	// 每10秒检查一次内存状态
 	if (millis() - last_memory_check > 10000) {
-		DEBUG_PRINTF("主循环内存检查 - 可用: %d bytes, 最小: %d bytes",
-		             esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
+		MEMORY_CHECK();
 		last_memory_check = millis();
 	}
 
