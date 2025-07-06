@@ -31,22 +31,6 @@ typedef struct {
 	RefreshType refreshType; // 刷新类型
 } UIStatus;
 
-#ifndef LOG
-	#define LOG(x) Serial.println(x)
-#endif
 
-#ifndef LOGF
-	#define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
-#endif
-#define MAIN_DEBUG 1 // 设置为 1 启用日志，设置为 0 禁用日志
-
-#if MAIN_DEBUG
-	// 区分 LOG 和 LOGF
-	#define LOG(x) Serial.println("[MAIN][LOG] " + String(x))
-	#define LOGF(fmt, ...) Serial.printf("[MAIN][LOGF] " fmt, ##__VA_ARGS__)
-#else
-	#define LOG(x)
-	#define LOGF(fmt, ...)
-#endif
 
 #endif // MAIN_H

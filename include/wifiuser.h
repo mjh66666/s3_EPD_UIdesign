@@ -8,17 +8,7 @@
 #include <ESPmDNS.h>
 #include <esp_wifi.h>
 #include <SPIFFS.h>
-
-// 日志开关宏定义
-#define WIFIUSER_DEBUG 1 // 设置为 1 启用日志，设置为 0 禁用日志
-
-#if WIFIUSER_DEBUG
-	#define LOG(x) Serial.println(x)
-	#define LOGF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)
-#else
-	#define LOG(x)
-	#define LOGF(fmt, ...)
-#endif
+#include "debug.h"
 
 class WifiUser {
 public:
