@@ -27,6 +27,8 @@
 #include <time.h>
 #include "main.h"
 #include <U8g2_for_Adafruit_GFX.h>
+
+#include "display_topbar.h"
 #include "image/image.h"
 #include "image/weather_icons.h"
 using std::string;
@@ -40,12 +42,12 @@ struct display_main_t {
 	struct weatherDailyInfo today;
 	string todos[TODO_MAX];
 	int selected_todo;
-
+	display_topbar_t topbar;
 	// 构造函数
 	display_main_t() : selected_todo(-1) {}
 };
 
-void display_main(const display_main_t *display_main_data, UIStatus *uis);
+void display_main(const display_topbar_t *topbar,const display_main_t *display_main_data, UIStatus *uis);
 void display_main_todo(const display_main_t *display_main_data);
 void show_weathericons(int weather_code);
 #endif // _DISPLAY_MAIN_H_

@@ -33,7 +33,7 @@ extern GxEPD2_BW<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display;
 
 static uint8_t partial_count = 0; // 局部刷新标志
 
-void display_main(const display_main_t *display_main_data, UIStatus *uis)
+void display_main(const display_topbar_t *topbar,const display_main_t *display_main_data, UIStatus *uis)
 {
     FUNC_ENTER();
     PERF_START(display_main);
@@ -42,9 +42,6 @@ void display_main(const display_main_t *display_main_data, UIStatus *uis)
     u8g2_epd.setFontMode(1);
     u8g2_epd.setFontDirection(0);
     u8g2_epd.setForegroundColor(GxEPD_BLACK);
-
-    // 调试信息（现在会显示来自display_main.cpp文件）
-    DEBUG_PRINTF("refreshType=%d, partial_count=%d", uis->refreshType, partial_count);
 
     //如果当前界面是全局刷新或局部刷新次数超过10次，则进行全局刷新
     if (uis->refreshType == REFRESH_FULL || partial_count > 10) {
@@ -62,20 +59,18 @@ void display_main(const display_main_t *display_main_data, UIStatus *uis)
     do {
         if (uis->refreshType == REFRESH_FULL) {
             display.fillScreen(GxEPD_WHITE);
-            VERBOSE_PRINT("屏幕已清空");
         }
 
         display.drawInvertedBitmap(AREA_TODO_X + ((AREA_TODO_W - 32) / 2), AREA_TODO_Y, todo, 32, 32, GxEPD_BLACK);
         // 绘制顶部栏
         display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H, AREA_TOPBAR_X + AREA_TOPBAR_W - 1, AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
         display.drawLine(AREA_TODO_X, AREA_TODO_Y, AREA_TODO_X, AREA_TODO_Y + AREA_TODO_H - 1, GxEPD_BLACK);
-        
+        display_topbar(topbar);
         // 绘制时间
         char str[6];
         snprintf(str, sizeof(str), "%02d:%02d", 
                 display_main_data->new_timeinfo.tm_hour, 
                 display_main_data->new_timeinfo.tm_min);
-        VERBOSE_PRINTF("绘制时间: %s", str);
 
         u8g2_epd.setFont(u8g2_mfxuanren_36_tr);
         int16_t str_w = u8g2_epd.getUTF8Width(str);

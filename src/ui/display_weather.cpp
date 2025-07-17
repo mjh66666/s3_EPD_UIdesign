@@ -20,7 +20,7 @@ static uint8_t partial_count = 0; // 局部刷新计数
 /**
  * @brief 主天气显示函数
  */
-void display_weather(const weatherHourlyInfo *hourly, UIStatus *uis)
+void display_weather(const display_topbar_t *topbar,const weatherHourlyInfo *hourly, UIStatus *uis)
 {
 	u8g2_epd.setBackgroundColor(GxEPD_WHITE);
 	u8g2_epd.setFontMode(1);
@@ -47,7 +47,7 @@ void display_weather(const weatherHourlyInfo *hourly, UIStatus *uis)
 		display.drawLine(AREA_TOPBAR_X, AREA_TOPBAR_Y + AREA_TOPBAR_H,
 		                 AREA_TOPBAR_X + AREA_TOPBAR_W - 1,
 		                 AREA_TOPBAR_Y + AREA_TOPBAR_H, GxEPD_BLACK);
-
+		display_topbar(topbar);
 		// 绘制7小时天气
 		draw7HourWeather(hourly, AREA_TOPBAR_H);
 

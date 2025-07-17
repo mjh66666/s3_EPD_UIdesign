@@ -15,7 +15,8 @@
 #define GPIO0_PIN_WIFIRESET 0
 #define GPIO45_PIN_USER 45
 #define USER_KEY "0781c49e69024849b7cb76ef017ca453"
-
+const char* ssid = "mate13";
+const char* password = "12345678";
 
 const String city = "东莞";
 
@@ -26,8 +27,10 @@ Weather *weather = nullptr;
 SemaphoreHandle_t epdMutex = nullptr;
 UIStatus uis;
 display_main_t display_main_data;
+display_topbar_t topbar;
 weatherHourlyInfo weather7hinfo[7];
 tm newtime;
+
 
 void updata_HourlyWeather(void *param);
 void updata_time(void *param);
@@ -98,6 +101,9 @@ void init_updata()
 	display_main_data.humi = 66;
 	display_main_data.temp = 36;
 	VERBOSE_PRINT("基础数据初始化完成");
+	topbar.bat_status = BATTERY_100; // 假设电池状态为100%
+	topbar.message = "[微信]:";
+	topbar.new_timeinfo = newtime;
 
 	// 安全的天气数据获取
 	if (weather != nullptr) {
@@ -135,18 +141,21 @@ void init_updata()
 			}
 			else {
 				ERROR_PRINT("getHourly()返回空指针");
-				memset(weather7hinfo, 0, sizeof(weather7hinfo));
+				for (int i = 0; i < 7; ++i) {
+					weather7hinfo[i] = weatherHourlyInfo();
+				}
 			}
 		}
 		catch (...) {
 			ERROR_PRINT("获取hourly数据异常");
-			memset(weather7hinfo, 0, sizeof(weather7hinfo));
+			for (int i = 0; i < 7; ++i) {
+				weather7hinfo[i] = weatherHourlyInfo();
+			}
 		}
 	}
 	else {
 		ERROR_PRINT("weather对象为空指针");
 		memset(&display_main_data.today, 0, sizeof(display_main_data.today));
-		memset(weather7hinfo, 0, sizeof(weather7hinfo));
 	}
 
 	// 初始化todos
@@ -164,7 +173,7 @@ void setup()
 {
 	Serial.begin(115200);
 	delay(1000); // 给串口时间初始化
-
+	WiFi.begin(ssid, password);
 	printlnA("=== EPD UI Design 启动 ===");
 	MEMORY_CHECK();
 
@@ -280,7 +289,7 @@ void updata_HourlyWeather(void *param)
 	INFO_PRINT("updata_HourlyWeather任务启动");
 	int cycle_count = 0;
 
-	while (1) {
+	while (true) {
 		cycle_count++;
 		DEBUG_PRINTF("天气更新任务第%d次循环", cycle_count);
 		STACK_CHECK("updata_HourlyWeather");
@@ -322,7 +331,7 @@ void updata_time(void *param)
 	INFO_PRINT("updata_time任务启动");
 	int cycle_count = 0;
 
-	while (1) {
+	while (true) {
 		cycle_count++;
 		VERBOSE_PRINTF("时间任务循环开始 #%d", cycle_count);
 		STACK_CHECK("updata_time");
@@ -333,14 +342,13 @@ void updata_time(void *param)
 			VERBOSE_PRINT("getLocalTime调用成功");
 
 			display_main_data.new_timeinfo = newtime;
+			topbar.new_timeinfo = newtime;
 			VERBOSE_PRINT("时间数据赋值完成");
 
 			if (uis.currentMenu == MENU_HOME) {
 				VERBOSE_PRINT("当前为主页，准备设置更新标志");
 				uis.refreshType = REFRESH_PARTIAL;
 				uis.updateFlag = true;
-				VERBOSE_PRINT("更新标志设置完成");
-
 				// 显示当前时间
 				DEBUG_PRINTF("当前时间: %02d:%02d:%02d",
 				             newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
@@ -364,7 +372,7 @@ void display_update(void *param)
 	INFO_PRINT("display_update任务启动");
 	int update_count = 0;
 
-	while (1) {
+	while (true) {
 		if (uis.updateFlag == true) {
 			update_count++;
 			DEBUG_PRINTF("显示更新#%d: menu=%d, refresh=%d",
@@ -379,12 +387,12 @@ void display_update(void *param)
 					switch (uis.currentMenu) {
 						case MENU_HOME:
 							DEBUG_PRINT("调用display_main()...");
-							display_main(&display_main_data, &uis);
+							display_main(&topbar,&display_main_data, &uis);
 							VERBOSE_PRINT("display_main()完成");
 							break;
 						case MENU_7HWEATHER:
 							DEBUG_PRINT("调用display_weather()...");
-							display_weather(weather7hinfo, &uis);
+							display_weather(&topbar,weather7hinfo, &uis);
 							VERBOSE_PRINT("display_weather()完成");
 							break;
 						default:

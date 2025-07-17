@@ -16,4 +16,7 @@ extern const unsigned char todo[];
 extern const unsigned char *batteryallArray[4];
 extern const int batteryallArray_LEN;
 extern const unsigned char *weather_icons_allArray[121];
+
+extern const unsigned char* epd_bitmap_wifi_status_allArray[2];
+
 #endif

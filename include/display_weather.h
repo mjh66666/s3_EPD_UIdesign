@@ -6,14 +6,6 @@
  * @FilePath: \s3_EPD_UIdesign\include\display_weather.h
  * @Description:
  */
-/***
- * @Author: mojionghao
- * @Date: 2025-06-18 21:13:20
- * @LastEditors: mojionghao
- * @LastEditTime: 2025-06-19 17:11:06
- * @FilePath: \s3_EPD_UIdesign\include\display_main.h
- * @Description:
- */
 #ifndef  _DISPLAY_WEATHER_H_
 #define  _DISPLAY_WEATHER_H_
 #include <Arduino.h>
@@ -29,10 +21,11 @@
 #include <U8g2_for_Adafruit_GFX.h>
 #include "image/image.h"
 #include "image/weather_icons.h"
+#include "display_topbar.h"
 using std::string;
 
 // 函数声明
-void display_weather(const weatherHourlyInfo *hourly, UIStatus *uis);
+void display_weather(const display_topbar_t *topbar,const weatherHourlyInfo *hourly, UIStatus *uis);
 String extractHour(const String &fxTime);
 void draw7HourWeather(const weatherHourlyInfo *hourly, int startY);
 void drawTemperatureTrend(const weatherHourlyInfo *hourly, int startY);
